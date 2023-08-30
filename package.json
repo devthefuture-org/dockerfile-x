@@ -1,0 +1,62 @@
+{
+  "name": "dockerfile-x",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.5.0",
+    "commander": "^11.0.0",
+    "docker-file-parser": "^1.0.7"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.36.1",
+    "chai": "^4.3.8",
+    "eslint": "^8.48.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-mocha": "^10.1.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "glob": "^10.3.4",
+    "husky": "^8.0.3",
+    "lint-staged": "^14.0.1",
+    "mocha": "^10.2.0",
+    "mocha-snap": "^5.0.0",
+    "pkg": "^5.8.1",
+    "prettier": "^3.0.3",
+    "standard-version": "^9.5.0"
+  },
+  "scripts": {
+    "test": "mocha",
+    "test:update": "mocha --update",
+    "lint": "eslint .",
+    "prepack": "yarn build:ncc",
+    "build": "yarn build:ncc && yarn build:pkg",
+    "build:ncc": "rm -rf dist && ncc build",
+    "build:pkg": "pkg -t node18-linuxstatic-x64 -o ./dist-bin/dockerfile-x --compress=GZip ./dist/index.js",
+    "docker:build": "docker build -t devthefuture/dockerfile-x .",
+    "docker:push": "docker push devthefuture/dockerfile-x",
+    "precommit": "lint-staged",
+    "prepare": "husky install",
+    "release": "standard-version",
+    "push": "git push -f --follow-tags origin master",
+    "delivery": "yarn release && yarn push && npm publish"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix"
+    ]
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "bin": "dist/index.js",
+  "packageManager": "yarn@3.6.3"
+}
