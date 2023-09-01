@@ -175,3 +175,4 @@ We welcome contributions! If you find a bug or have a feature request, please op
   - release
   - publish to npm
   - build and push images to docker registry and codeberg registry
+  - sync the repo with github
