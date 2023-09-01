@@ -171,3 +171,7 @@ We welcome contributions! If you find a bug or have a feature request, please op
 ## TODO
 
 - remote url feature with recursive remote resolution
+- add .gitea ci for codeberg:
+  - release
+  - publish to npm
+  - build and push images to docker registry and codeberg registry
