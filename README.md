@@ -30,7 +30,9 @@ this will compile the final Dockerfile using [devthefuture/dockerfile-x](https:/
 
 ### Requirements
 
-We recommend using Docker 20.10 or later. However, if you're working with Docker versions as old as 18.09, you can still enable BuildKit. To do so, you'll need to set the following environment variables: `DOCKER_BUILDKIT=1` and `COMPOSE_DOCKER_CLI_BUILD=1`.
+We recommend using Docker 20.10 or later.
+
+However, if you're working with Docker versions as old as 18.09, you can still enable BuildKit. To do so, you'll need to set the following environment variables: `DOCKER_BUILDKIT=1` and `COMPOSE_DOCKER_CLI_BUILD=1`.
 
 ## Features:
 - [INCLUDE](#include): Incorporate content as is from other Dockerfiles or snippets.
@@ -64,7 +66,7 @@ For a file to be recognized as an included Dockerfile, the `FROM|` or `--from` p
 
 ## Examples:
 
-Example 1: Basic INCLUDE
+Basic INCLUDE
 
 ```Dockerfile
 INCLUDE ./common-instructions.dockerfile
@@ -72,10 +74,9 @@ INCLUDE ./common-instructions.dockerfile
 FROM debian:latest
 
 CMD ["bash"]
-
 ```
 
-Example 2: Using stages from another Dockerfile
+Using stages from another Dockerfile
 
 ```Dockerfile
 FROM ./base/dockerfile#dev AS development
@@ -86,16 +87,14 @@ FROM ./base/dockerfile#prod AS production
 
 COPY --from=development /app /app
 CMD ["start-app"]
-
 ```
 
-Example 3: Re-aliasing a stage
+Re-aliasing a stage
 
 ```Dockerfile
 FROM ./complex-setup/dockerfile#old-stage-name AS new-name
 
 COPY ./configs /configs
-
 ```
 
 ## Features documentation:
@@ -107,7 +106,6 @@ Easily include content from another Dockerfile or snippet, ensuring straightforw
 ```Dockerfile
 # Include another Dockerfile's content
 INCLUDE ./path/to/another/dockerfile
-
 ```
 
 ### FROM
@@ -191,11 +189,6 @@ We welcome contributions! If you find a bug or have a feature request, please op
 
 ```sh
 sudo systemctl restart docker
-```
-
-then observe the logs
-```sh
-journalctl -u docker.service -f
 ```
 
 ## TODO
