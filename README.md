@@ -63,6 +63,8 @@ For a file to be recognized as an included Dockerfile, the `FROM|` or `--from` p
 
 - A Dockerfile can be imported many times using `FROM` instruction or `--from` parameters, at same or different stages, the imported stages will be deduplicated automatically.
 
+- The path resolution for imported Dockerfiles is relative to the docker build context, not the root Dockerfile. This is due to a limitation in BuildKit and is consistent with other instructions. Ensure that the imported Dockerfiles are within the build context. For certain monorepo architectures, you can use symlinks.
+
 
 ## Examples:
 
