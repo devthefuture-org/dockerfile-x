@@ -9,6 +9,6 @@
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   },
   "files.associations": {
-    "*.dockerfile{,.snap}": "Dockerfile"
+    "*.dockerfile{.snap}": "Dockerfile"
   }
 }

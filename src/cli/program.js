@@ -1,9 +1,11 @@
-const fs = require("fs/promises")
 const path = require("path")
+const os = require("os")
+const fs = require("fs/promises")
 
 const { Command } = require("commander")
 
 const loadDockerfile = require("../core/loadDockerfile")
+const getDataFromStdin = require("../utils/getDataFromStdin")
 
 const pkg = require(`../../package.json`)
 
@@ -14,26 +16,32 @@ module.exports = function createProgram() {
   program.version(pkg.version)
 
   return program
-    .option(
-      "-c, --context <path>",
-      "Path to the build context",
-      process.env.BUILDKIT_CONTEXT_PATH || process.cwd(),
-    )
+    .option("-c, --context <path>", "Path to the build context", process.cwd())
     .option(
       "-f, --file <filename>",
       "Name of the Dockerfile",
-      process.env.BUILDKIT_FRONTEND_OPT_FILENAME || "Dockerfile",
+      process.stdin.isTTY === undefined ? "-" : "Dockerfile",
     )
     .option("-o, --output <outputFile>", "Path to output file")
     .action(async (cmd) => {
-      const { context: dockerContext, file, output } = cmd
+      let { file } = cmd
+      if (file === "-") {
+        const stdin = await getDataFromStdin()
+        const tempFilePath = path.join(
+          process.env.DOCKERFILEX_TMPDIR || os.tmpdir(),
+          "Dockerfile_" + Date.now(),
+        )
+        await fs.writeFile(tempFilePath, stdin)
+        file = tempFilePath
+      }
+
+      const { context: dockerContext, output } = cmd
       const absoluteDockerfilePath = file.startsWith("/")
         ? file
         : path.join(dockerContext, file)
-      const rootDockerfileDir = path.dirname(absoluteDockerfilePath)
+
       const processedDockerfile = await loadDockerfile(absoluteDockerfilePath, {
         dockerContext,
-        rootDockerfileDir,
       })
 
       if (output) {

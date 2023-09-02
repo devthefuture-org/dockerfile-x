@@ -6,7 +6,7 @@ const generateIncluded = require("../core/generateIncluded")
 
 module.exports = ({
   nestingLevel,
-  rootDockerfileDir,
+  dockerContext,
   filePath,
   relativeFilePath,
   scope,
@@ -17,13 +17,13 @@ module.exports = ({
       : instruction.args
 
     const includePath = path.join(path.dirname(filePath), includePathRelative)
-    const relativeIncludePath = path.relative(rootDockerfileDir, includePath)
+    const relativeIncludePath = path.relative(dockerContext, includePath)
 
     const stageAlias = generateFilePathSlug(relativeIncludePath)
 
     const includedContent = await loadDockerfile(includePath, {
       scope: [...scope],
-      rootDockerfileDir,
+      dockerContext,
       parentStageTarget: null,
       parentStageAlias: stageAlias,
       nestingLevel: nestingLevel + 1,

@@ -2,7 +2,8 @@ const { execSync } = require("child_process")
 const { default: snap } = require("mocha-snap")
 
 async function runTemplateTool(inputFile) {
-  const command = `node index.js -f ${inputFile}`
+  // const command = `node index.js -f ${inputFile}`
+  const command = `dist-bin/dockerfile-x -f ${inputFile}`
   return execSync(command, { encoding: "utf-8" })
 }
 

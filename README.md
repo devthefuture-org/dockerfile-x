@@ -168,6 +168,28 @@ With the growing complexity of Docker setups, this tool ensures your Dockerfiles
 
 We welcome contributions! If you find a bug or have a feature request, please open an issue. If you'd like to contribute code, please fork the repository and submit a pull request.
 
+### Development
+
+#### Enable debugging
+
+`/etc/docker/daemon.json`
+
+```json
+{
+    "experimental": true,
+    "debug": true
+}
+```
+
+```sh
+sudo systemctl restart docker
+```
+
+then observe the logs
+```sh
+journalctl -u docker.service -f
+```
+
 ## TODO
 
 - remote url feature with recursive remote resolution

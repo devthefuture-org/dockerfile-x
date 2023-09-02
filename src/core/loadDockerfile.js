@@ -2,6 +2,7 @@ const path = require("path")
 const fs = require("fs/promises")
 
 const parseDockerfile = require("../lib/parseDockerfile")
+const checkFileExists = require("../utils/checkFileExists")
 
 const postProcessDockerfile = require("./postProcessDockerfile")
 
@@ -14,11 +15,11 @@ async function loadDockerfile(filePath, fileContext = {}) {
     parentStageTarget = null,
     parentStageAlias = null,
     nestingLevel = 0,
-    rootDockerfileDir,
+    dockerContext,
     scope = [],
   } = fileContext
 
-  const relativeFilePath = path.relative(rootDockerfileDir, filePath)
+  const relativeFilePath = path.relative(dockerContext, filePath)
   scope.push(relativeFilePath)
 
   const isRootFile = nestingLevel === 0
@@ -32,6 +33,16 @@ async function loadDockerfile(filePath, fileContext = {}) {
   }
 
   const instructionProcessors = instructionFactory(processingContext)
+
+  if (!(await checkFileExists(filePath))) {
+    process.stdout.write(
+      JSON.stringify({
+        error: "missing-file",
+        filename: relativeFilePath,
+      }),
+    )
+    process.exit(2)
+  }
 
   const content = await fs.readFile(filePath, "utf-8")
   const instructions = parseDockerfile(content, {
