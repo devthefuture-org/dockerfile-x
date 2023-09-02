@@ -28,6 +28,9 @@ note that you can also use `docker compose` or other tools that rely on docker b
 
 this will compile the final Dockerfile using [devthefuture/dockerfile-x](https://hub.docker.com/r/devthefuture/dockerfile-x) docker image, just before running the build
 
+### Requirements
+
+We recommend using Docker 20.10 or later. However, if you're working with Docker versions as old as 18.09, you can still enable BuildKit. To do so, you'll need to set the following environment variables: `DOCKER_BUILDKIT=1` and `COMPOSE_DOCKER_CLI_BUILD=1`.
 
 ## Features:
 - [INCLUDE](#include): Incorporate content as is from other Dockerfiles or snippets.
