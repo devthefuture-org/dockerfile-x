@@ -193,6 +193,11 @@ We welcome contributions! If you find a bug or have a feature request, please op
 sudo systemctl restart docker
 ```
 
+then observe the logs
+```sh
+journalctl -u docker.service -f
+```
+
 ## TODO
 
 - remote url feature with recursive remote resolution

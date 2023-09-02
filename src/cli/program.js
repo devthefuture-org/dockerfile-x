@@ -29,7 +29,7 @@ module.exports = function createProgram() {
         const stdin = await getDataFromStdin()
         const tempFilePath = path.join(
           process.env.DOCKERFILEX_TMPDIR || os.tmpdir(),
-          "Dockerfile_" + Date.now(),
+          "DockerfileX_" + Date.now(),
         )
         await fs.writeFile(tempFilePath, stdin)
         file = tempFilePath

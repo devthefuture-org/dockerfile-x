@@ -15,7 +15,7 @@ module.exports = function scopeStages(instructions, { relativeFilePath }) {
       if (asMatch) {
         stageNames.push(asMatch[1])
       } else {
-        const isIncludeFrom = instruction.args.match(includeFromRegex)
+        const isIncludeFrom = includeFromRegex.test(instruction.args)
         if (isIncludeFrom) {
           continue
         }

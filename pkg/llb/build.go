@@ -40,13 +40,13 @@ const (
 	buildArgPrefix = "build-arg:"
 )
 
-func loadFileFromContext(ctx context.Context, c client.Client, filename string) ([]byte, error) {
+func loadFileFromContext(ctx context.Context, c client.Client, localCtx string, filename string) ([]byte, error) {
 	name := "load definition"
 	if filename != "Dockerfile" {
 		name += " from " + filename
 	}
 	src := llb.Local(
-		localNameConfig,
+		localCtx,
 		llb.IncludePatterns([]string{filename}),
 		llb.SessionID(c.BuildOpts().SessionID),
 		llb.SharedKeyHint(defaultDockerfileName),
@@ -77,12 +77,20 @@ func loadFileFromContext(ctx context.Context, c client.Client, filename string) 
 	return xdockerfile, nil
 }
 
-func tryDockerfileX(ctx context.Context, c client.Client, xdockerfile []byte) (result string, err error) {
+func tryDockerfileX(ctx context.Context, c client.Client, filename string) (result string, err error) {
 	var lastMissingFile string
 
+	xdockerfile, err := loadFileFromContext(ctx, c, localNameConfig, filename)
+	if err != nil {
+		return "", fmt.Errorf("failed to load dockerfile '%s' from context: %s\n", filename, err)
+	}
+
+	if err = ioutil.WriteFile(filename, xdockerfile, 0644); err != nil {
+		return "", fmt.Errorf("Error writing to file '%s': %s\n", filename, err)
+	}
+
 	for {
-		cmd := exec.Command("dockerfile-x")
-		cmd.Stdin = bytes.NewReader(xdockerfile)
+		cmd := exec.Command("dockerfile-x", "-f", filename)
 
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
@@ -112,7 +120,7 @@ func tryDockerfileX(ctx context.Context, c client.Client, xdockerfile []byte) (r
 				}
 				lastMissingFile = missingFile
 
-				content, err := loadFileFromContext(ctx, c, missingFile)
+				content, err := loadFileFromContext(ctx, c, localNameContext, missingFile)
 				if err != nil {
 					return "", err
 				}
@@ -139,12 +147,7 @@ func Build(ctx context.Context, c client.Client) (*client.Result, error) {
 		filename = defaultDockerfileName
 	}
 
-	xdockerfile, err := loadFileFromContext(ctx, c, filename)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load dockerfile '%s' from context: %s\n", filename, err)
-	}
-
-	dockerfile, err := tryDockerfileX(ctx, c, xdockerfile)
+	dockerfile, err := tryDockerfileX(ctx, c, filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute dockerfile-x: %s, Output: %s\n", err, dockerfile)
 	}
