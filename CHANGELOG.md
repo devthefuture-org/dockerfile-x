@@ -1,0 +1,15 @@
+# Changelog
+
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+## 1.1.0 (2023-09-02)
+
+
+### Features
+
+* frontend integration ([4426e26](https://codeberg.org/devthefuture/dockerfile-x/commit/4426e2640d5e6e942ddc8ca40a0edb79ef79ac4a))
+
+
+### Bug Fixes
+
+* npm pack ([61c3961](https://codeberg.org/devthefuture/dockerfile-x/commit/61c3961bac1c7218ae7517872ce74a9d716f4416))
