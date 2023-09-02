@@ -167,6 +167,11 @@ COPY --from=/path/to/another/dockerfile#stage-name source-path destination-path
 
 With the growing complexity of Docker setups, this tool ensures your Dockerfiles remain clean, maintainable, and modular.
 
+### Related
+
+- https://github.com/moby/moby/issues/735
+- https://stackoverflow.com/questions/36362233/can-a-dockerfile-extend-another-one
+
 ## Contributing:
 
 We welcome contributions! If you find a bug or have a feature request, please open an issue. If you'd like to contribute code, please fork the repository and submit a pull request.
