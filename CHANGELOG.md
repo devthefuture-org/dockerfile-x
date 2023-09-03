@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.3](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.1.2...v1.1.3) (2023-09-03)
+
+
+### Bug Fixes
+
+* dockerfile name collision ([a086711](https://codeberg.org/devthefuture/dockerfile-x/commit/a0867112896fcdc2135f11c02c15ac7959667947))
+
 ### [1.1.2](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.1.1...v1.1.2) (2023-09-02)
 
 
