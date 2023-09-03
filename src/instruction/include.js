@@ -10,13 +10,17 @@ module.exports = ({
   filePath,
   relativeFilePath,
   scope,
+  isRootFile,
 }) =>
   async function processInclude(instruction) {
     const includePathRelative = Array.isArray(instruction.args)
       ? instruction.args[0]
       : instruction.args
 
-    const includePath = path.join(path.dirname(filePath), includePathRelative)
+    const includePath = path.join(
+      isRootFile ? dockerContext : path.dirname(filePath),
+      includePathRelative,
+    )
     const relativeIncludePath = path.relative(dockerContext, includePath)
 
     const stageAlias = generateFilePathSlug(relativeIncludePath)
