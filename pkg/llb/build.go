@@ -13,6 +13,7 @@ import (
 	"path"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/containerd/containerd/platforms"
 	"github.com/moby/buildkit/client/llb"
@@ -87,12 +88,14 @@ func tryDockerfileX(ctx context.Context, c client.Client, filename string) (resu
 		return "", fmt.Errorf("failed to load dockerfile '%s' from context: %s\n", filename, err)
 	}
 
-	if err = ioutil.WriteFile(filename, xdockerfile, 0644); err != nil {
-		return "", fmt.Errorf("Error writing to file '%s': %s\n", filename, err)
+	uniqFilename := fmt.Sprintf("%s_%d", filename, time.Now().Unix())
+
+	if err = ioutil.WriteFile(uniqFilename, xdockerfile, 0644); err != nil {
+		return "", fmt.Errorf("Error writing to file '%s': %s\n", uniqFilename, err)
 	}
 
 	for {
-		cmd := exec.Command("dockerfile-x", "-f", filename)
+		cmd := exec.Command("dockerfile-x", "-f", uniqFilename)
 
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
