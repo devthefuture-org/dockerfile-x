@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.2.1](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.2.0...v1.2.1) (2023-09-03)
+
+
+### Bug Fixes
+
+* cli ([b8ac4db](https://codeberg.org/devthefuture/dockerfile-x/commit/b8ac4dbd239fe8935b7df8db1b2f54787b23e380))
+
 ## [1.2.0](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.1.3...v1.2.0) (2023-09-03)
 
 
