@@ -10,6 +10,8 @@ module.exports = loadDockerfile // placed here to fix circular dependencies
 
 const instructionFactory = require("../instruction") // placed here to fix circular dependencies
 
+const defaultExtension = ".dockerfile"
+
 async function loadDockerfile(filePath, fileContext = {}) {
   const {
     parentStageTarget = null,
@@ -22,6 +24,26 @@ async function loadDockerfile(filePath, fileContext = {}) {
   const relativeFilePath = path.relative(dockerContext, filePath)
   scope.push(relativeFilePath)
 
+  if (!(await checkFileExists(filePath))) {
+    let fileIsMissing = true
+    if (path.extname(filePath) !== defaultExtension) {
+      const filePathWithExt = `${filePath}${defaultExtension}`
+      if (await checkFileExists(filePathWithExt)) {
+        filePath = filePathWithExt
+        fileIsMissing = false
+      }
+    }
+    if (fileIsMissing) {
+      process.stdout.write(
+        JSON.stringify({
+          error: "missing-file",
+          filename: relativeFilePath,
+        }),
+      )
+      process.exit(2)
+    }
+  }
+
   const isRootFile = nestingLevel === 0
 
   const processingContext = {
@@ -33,16 +55,6 @@ async function loadDockerfile(filePath, fileContext = {}) {
   }
 
   const instructionProcessors = instructionFactory(processingContext)
-
-  if (!(await checkFileExists(filePath))) {
-    process.stdout.write(
-      JSON.stringify({
-        error: "missing-file",
-        filename: relativeFilePath,
-      }),
-    )
-    process.exit(2)
-  }
 
   const content = await fs.readFile(filePath, "utf-8")
   const instructions = parseDockerfile(content, {

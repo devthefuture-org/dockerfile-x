@@ -66,6 +66,10 @@ For a file to be recognized as an included Dockerfile, the `FROM|` or `--from` p
 - The paths resolutions **for imported Dockerfiles from the root Dockerfile** are relative to the docker build context, not the root Dockerfile itself. This is due to a limitation in BuildKit and this is consistent with other instructions that are also relative the context. The imported Dockerfiles must be in the build context, but can be safely ignored from .dockerignore. Symlinking does not help in this case.
 - However, the paths resolutions **for imported Dockerfiles from the imported Dockerfiles** are relative to the imported Dockerfile itself.
 
+### Dockerfile Extension:
+
+- If you're importing a Dockerfile with the `.dockerfile` extension, you don't need to specify the extension; it will be detected automatically.
+
 
 ## Examples:
 

@@ -41,6 +41,8 @@ const (
 	// e.g. `buildctl ... --opt build-arg:http_proxy=http://foo`
 	// See https://github.com/moby/buildkit/blob/81b6ff2c55565bdcb9f0dbcff52515f7c7bb429c/frontend/dockerfile/docs/reference.md#predefined-args
 	buildArgPrefix = "build-arg:"
+
+	defaultExtension = ".dockerfile"
 )
 
 func loadFileFromContext(ctx context.Context, c client.Client, localCtx string, filename string) ([]byte, error) {
@@ -126,6 +128,11 @@ func tryDockerfileX(ctx context.Context, c client.Client, filename string) (resu
 				lastMissingFile = missingFile
 
 				content, err := loadFileFromContext(ctx, c, localNameContext, missingFile)
+				if err != nil && !strings.HasSuffix(missingFile, defaultExtension) {
+					missingFile = missingFile + defaultExtension
+					content, err = loadFileFromContext(ctx, c, localNameContext, missingFile)
+				}
+
 				if err != nil {
 					return "", err
 				}
