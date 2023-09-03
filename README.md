@@ -4,7 +4,7 @@
 
 ## Getting Started:
 
-To enable dockerfile-x` custom syntax, you can use native docker buildkit frontend feature by adding syntax comment to the beginning of your Dockerfile:
+To enable `dockerfile-x` custom syntax, you can use native docker buildkit frontend feature by adding syntax comment to the beginning of your Dockerfile:
 
 ```Dockerfile
 # syntax = devthefuture/dockerfile-x
