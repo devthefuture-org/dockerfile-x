@@ -1,1 +1,1 @@
-module.exports = new RegExp("^syntax\\s*=\\s*(.+)$")
+module.exports = /#\s*syntax\s*=\s*[^\s]+/
