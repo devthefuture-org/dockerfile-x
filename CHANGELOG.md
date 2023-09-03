@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.2.0](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.1.3...v1.2.0) (2023-09-03)
+
+
+### Features
+
+* default .dockerfile extension ([77ca8a6](https://codeberg.org/devthefuture/dockerfile-x/commit/77ca8a6e60d601aa03e59186e186082f3d9a90c9))
+
 ### [1.1.3](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.1.2...v1.1.3) (2023-09-03)
 
 
