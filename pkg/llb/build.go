@@ -1,5 +1,7 @@
 package llb
 
+// this code is based on https://github.com/cmdjulian/mopy/
+
 import (
 	"bytes"
 	"context"
