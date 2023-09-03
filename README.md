@@ -164,6 +164,25 @@ Or specify a stage from which to copy or add:
 COPY --from=/path/to/another/dockerfile#stage-name source-path destination-path
 ```
 
+## Addressing Dockerfile Evolution Concerns
+
+Understanding concerns regarding feature availability with alternative frontends:
+
+Some might worry that alternative frontends would lack the ability to layer on top of the official `docker/dockerfile`, potentially missing out on its additional features. Let's address this concern for `dockerfile-x`.
+
+### How `dockerfile-x` Operates:
+1. **Node.js Compilation**: The Node.js component compiles custom Dockerfile syntax into the standard Dockerfile format in a superset manner.
+2. **BuildKit Frontend Service**: This service then translates the standard Dockerfile to LLB. This step uses minimal custom code, predominantly relying on official BuildKit packages.
+
+### Addressing Future Updates to `docker/dockerfile`:
+Though updates to `docker/dockerfile` aren't frequent, here's how we'd accommodate them:
+
+1. **Upgrade the Go Package**: The Go part of `dockerfile-x` is lean in terms of custom code. Thus, maintaining it and integrating any updates from `docker/dockerfile` would be straightforward.
+2. **Direct Compilation with Node.js**: Instead of using the custom syntax frontend, users can compile the Dockerfile-X directly to a standard Dockerfile using only the Node.js component. This standalone CLI tool can be used via the command `npx dockerfile-x` (further details available with `--help`). Any new additions to `docker/dockerfile`, like novel keywords, would be inherently supported without needing any modifications to this library.
+
+In essence, one could think of `dockerfile-x` as a dedicated template engine specially crafted for Dockerfiles.
+
+
 ## Why
 
 With the growing complexity of Docker setups, this tool ensures your Dockerfiles remain clean, maintainable, and modular.
