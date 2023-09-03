@@ -55,9 +55,10 @@
   },
   "files": [
     "dist/",
+    "bin/",
     "README.md",
     "LICENSE"
   ],
-  "bin": "dist/index.js",
+  "bin": "bin/dockerfile-x",
   "packageManager": "yarn@3.6.3"
 }
