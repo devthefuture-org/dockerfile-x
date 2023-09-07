@@ -198,7 +198,16 @@ With the growing complexity of Docker setups, this tool ensures your Dockerfiles
 
 ## Contributing:
 
-We welcome contributions! If you find a bug or have a feature request, please open an issue. If you'd like to contribute code, please fork the repository and submit a pull request.
+We welcome contributions! If you encounter a bug or have a feature suggestion, please open an issue. To contribute code, simply fork the repository and submit a pull request.
+
+This repository is mirrored on both GitHub and Codeberg. Contributions can be made on either platform, as the repositories are synchronized bidirectionally. 
+- Codeberg: [https://codeberg.org/devthefuture/dockerfile-x](https://codeberg.org/devthefuture/dockerfile-x)
+- GitHub: [https://github.com/devthefuture-org/dockerfile-x](https://github.com/devthefuture-org/dockerfile-x)
+
+For more information:
+- [Why mirror to Codeberg?](https://codeberg.org/Recommendations/Mirror_to_Codeberg#why-should-we-mirror-to-codeberg)
+- [GitHub to Codeberg mirroring tutorial](https://codeberg.org/Recommendations/Mirror_to_Codeberg#github-codeberg-mirroring-tutorial)
+
 
 ### Development
 
