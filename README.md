@@ -231,11 +231,12 @@ then observe the logs
 journalctl -u docker.service -f
 ```
 
-## TODO
+## TODO NEXT
 
+### features:
 - remote url feature with recursive remote resolution
-- add .gitea ci for codeberg:
-  - release
-  - publish to npm
-  - build and push images to docker registry and codeberg registry
-  - sync the repo with github (with link to canonical codeberg repository)
+
+### ci .gitea (for codeberg):
+- release
+- publish to npm
+- build and push images to docker registry and codeberg registry
