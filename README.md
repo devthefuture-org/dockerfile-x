@@ -235,6 +235,7 @@ journalctl -u docker.service -f
 
 ### features:
 - remote url feature with recursive remote resolution
+- allow customization hook/plugins autoloading .dockerfile-x.js or .dockerfile-x/index.js (eg: integration of yarn workspaces topographically)
 
 ### ci .gitea (for codeberg):
 - release
