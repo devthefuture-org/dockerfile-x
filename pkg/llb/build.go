@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -456,7 +457,8 @@ func readDockerIgnoreFile(ctx context.Context, c client.Client) ([]string, error
 	}
 
 	// Split []byte slice by new line
-	strSlice := bytes.Split(dockerignoreBytes, []byte("\n"))
+	re := regexp.MustCompile(`\r\n|\n|\r`)
+	strSlice := re.Split(string(dockerignoreBytes), -1)
 
 	// Convert []byte slice to []string slice
 	var excludes []string
