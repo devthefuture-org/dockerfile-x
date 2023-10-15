@@ -16,7 +16,7 @@ go-deps:
 	go mod tidy
 	go mod vendor
 
-go-build: go-deps
+go-build:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod vendor -ldflags '-w -extldflags "-static"' -o dist-bin/dockerfile-x-frontend .
 
 
