@@ -1,10 +1,14 @@
 # DOCKER
 
+setup-docker-multiarch:
+	docker buildx create --use --name mybuilder --driver docker-container
+	docker buildx inspect mybuilder --bootstrap
+
 docker-build:
-	docker build -t devthefuture/dockerfile-x --progress=plain .
+	docker buildx build --platform linux/amd64,linux/arm64 -t devthefuture/dockerfile-x --progress=plain .
 
 docker-push:
-	docker push devthefuture/dockerfile-x
+	docker buildx build --platform linux/amd64,linux/arm64 -t devthefuture/dockerfile-x --progress=plain . --push
 
 
 # GO
