@@ -24,7 +24,10 @@ COPY src src
 RUN yarn build:ncc
 RUN yarn pkg -t node18-linuxstatic-$(cat .nodearch) -o ./dist-bin/dockerfile-x --compress=GZip ./dist/index.js
 
-FROM golang:1.19 AS build-frontend
+FROM alpine:3 as certs
+RUN apk --update add ca-certificates
+
+FROM golang:1.21 AS build-frontend
 ARG TARGETARCH
 WORKDIR /app
 COPY vendor vendor
@@ -39,5 +42,6 @@ ENV PATH=/
 ENV DOCKERFILEX_TMPDIR=/workspace
 USER 1000
 WORKDIR /workspace
+COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build-frontend /app/dist-bin/ /
 COPY --from=build-cli /app/dist-bin/ /

@@ -14,7 +14,8 @@ docker-push:
 # GO
 
 go-version:
-	gvm use 1.19
+	gvm install go1.21
+	gvm use 1.21
 	
 go-deps:
 	go mod tidy
