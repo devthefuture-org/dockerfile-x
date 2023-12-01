@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -81,6 +82,18 @@ func loadDockerfileX(ctx context.Context, c client.Client, src *dockerui.Source)
 	return nil
 }
 
+func EnsureDir(filePath string, perm os.FileMode) error {
+	// Extract the directory part of the file path.
+	dir := filepath.Dir(filePath)
+
+	// Check if the directory exists.
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		// The directory does not exist, so create it.
+		return os.MkdirAll(dir, perm)
+	}
+	return nil
+}
+
 func tryDockerfileX(ctx context.Context, c client.Client, filename string) (result string, err error) {
 	var lastMissingFile string
 
@@ -90,7 +103,9 @@ func tryDockerfileX(ctx context.Context, c client.Client, filename string) (resu
 	}
 
 	uniqFilename := fmt.Sprintf("%s_%d", filename, time.Now().Unix())
-
+	if err = EnsureDir(uniqFilename, 0755); err != nil {
+		return "", fmt.Errorf("Error creating parent dir for file '%s': %s\n", uniqFilename, err)
+	}
 	if err = ioutil.WriteFile(uniqFilename, xdockerfile, 0644); err != nil {
 		return "", fmt.Errorf("Error writing to file '%s': %s\n", uniqFilename, err)
 	}
