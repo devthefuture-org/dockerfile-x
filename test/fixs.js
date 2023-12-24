@@ -11,3 +11,9 @@ describe("dedup", () => {
     await testFixture("dedup")
   })
 })
+
+describe("issues", () => {
+  it("include-target", async () => {
+    await testFixture("issue1")
+  })
+})

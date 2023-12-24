@@ -1,9 +1,8 @@
 # DOCKERFILE-X:START file="inc/downloader.dockerfile" includedBy="include.dockerfile"
 # DOCKERFILE-X:START file="ubuntu.dockerfile" includedBy="inc/downloader.dockerfile"
 ARG UBUNTU_VERSION=22.04
-FROM ubuntu:$UBUNTU_VERSION AS downlo550515--ubuntu9e4275--final-stage
-FROM downlo550515--ubuntu9e4275--final-stage AS downlo550515--ubuntu9e4275
-FROM downlo550515--ubuntu9e4275 AS downlo550515
+FROM ubuntu:$UBUNTU_VERSION AS ubuntu9e4275--final-stage
+FROM ubuntu9e4275--final-stage AS ubuntu9e4275
 RUN groupadd -g 1000 ubuntu && useradd -rm -d /home/ubuntu -s /bin/bash -g ubuntu -G sudo -u 1000 ubuntu
 ENV HOME=/home/ubuntu
 RUN chmod 0777 /home/ubuntu

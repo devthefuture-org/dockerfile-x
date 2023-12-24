@@ -7,7 +7,7 @@ const loadDockerfile = require("../core/loadDockerfile")
 const generateIncluded = require("../core/generateIncluded")
 
 module.exports = ({
-  nestingLevel,
+  nestingLevel = 0,
   dockerContext,
   filePath,
   relativeFilePath,

@@ -5,7 +5,7 @@ const loadDockerfile = require("../core/loadDockerfile")
 const generateIncluded = require("../core/generateIncluded")
 
 module.exports = ({
-  nestingLevel,
+  nestingLevel = 0,
   dockerContext,
   filePath,
   relativeFilePath,
@@ -31,6 +31,7 @@ module.exports = ({
       parentStageTarget: null,
       parentStageAlias: stageAlias,
       nestingLevel: nestingLevel + 1,
+      isRootInclude: nestingLevel === 0,
     })
 
     const result = []

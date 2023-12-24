@@ -10,11 +10,19 @@ const scopeStages = require("./scopeStages")
 
 module.exports = function postProcessDockerfile(
   content,
-  { stageTarget, stageAlias, filePath, isRootFile, relativeFilePath, scope },
+  {
+    stageTarget,
+    stageAlias,
+    filePath,
+    isRootFile,
+    isRootInclude,
+    relativeFilePath,
+    scope,
+  },
 ) {
   const instructions = parseDockerfile(content)
 
-  if (!isRootFile) {
+  if (!isRootFile && !isRootInclude) {
     scopeStages(instructions, { relativeFilePath })
   }
 
@@ -46,7 +54,8 @@ module.exports = function postProcessDockerfile(
       if (matchTargetStage) {
         stageTargetFound = true
       }
-      const isLastTarget = !localStageTarget && currentFromCount === fromCount
+      const isLastTarget =
+        !isRootInclude && !localStageTarget && currentFromCount === fromCount
       if (stageAlias && (matchTargetStage || isLastTarget)) {
         result += `FROM ${stageName} AS ${stageAlias}` + "\n"
       }
@@ -61,7 +70,7 @@ module.exports = function postProcessDockerfile(
 
   result = deduplicateStages(result)
 
-  if (isRootFile) {
+  if (isRootFile || isRootInclude) {
     result = sanitizeStageNames(result)
   }
 

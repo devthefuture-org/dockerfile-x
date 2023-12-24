@@ -19,6 +19,7 @@ async function loadDockerfile(filePath, fileContext = {}) {
     nestingLevel = 0,
     dockerContext,
     scope = [],
+    isRootInclude,
   } = fileContext
 
   const relativeFilePath = path.relative(dockerContext, filePath)
@@ -77,6 +78,7 @@ async function loadDockerfile(filePath, fileContext = {}) {
     stageAlias: parentStageAlias,
     filePath,
     isRootFile,
+    isRootInclude,
     scope,
     relativeFilePath,
   })
