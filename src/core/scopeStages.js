@@ -64,6 +64,18 @@ module.exports = function scopeStages(instructions, { relativeFilePath }) {
         ] = `--from=${stageNamePrefix}--${stageName}`
         instruction.raw = generateRawInstruction(instruction)
       }
+
+      if (instruction.name === "RUN") {
+        const match = instruction.args.match(/--mount=[^ ]*from=([^, ]+)/)
+        if (!(match && match[1] === stageName)) {
+          continue
+        }
+        instruction.args = instruction.args.replace(
+          /(--mount=[^ ]*from=)[^, ]+/,
+          `$1${stageNamePrefix}--${stageName}`,
+        )
+        instruction.raw = generateRawInstruction(instruction)
+      }
     }
   }
 }

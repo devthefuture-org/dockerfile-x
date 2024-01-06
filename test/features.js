@@ -22,6 +22,10 @@ describe("FROM", () => {
   it("fromWithTargetStageAlias", async () => {
     await testFixture("fromWithTargetStageAlias")
   })
+
+  it("mountFrom", async () => {
+    await testFixture("mountFrom")
+  })
 })
 
 describe("COPY", () => {
