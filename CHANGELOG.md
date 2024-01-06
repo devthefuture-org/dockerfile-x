@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.3](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.3.2...v1.3.3) (2024-01-06)
+
+
+### Bug Fixes
+
+* mount from scope stage ([24c9694](https://codeberg.org/devthefuture/dockerfile-x/commit/24c96945abb71076ea2c400491946c0f417a7cfb))
+* npm version ([cad654e](https://codeberg.org/devthefuture/dockerfile-x/commit/cad654e2ed319a7471788ac75d70320e88d6328c))
+
 ### [1.2.3](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.2.2...v1.2.3) (2023-09-03)
 
 
