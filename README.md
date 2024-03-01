@@ -40,10 +40,9 @@ However, if you're working with Docker versions as old as 18.09, you can still e
   - [FROM with Relative Paths](#from-with-relative-paths): Use other Dockerfiles as a base using relative paths.
   - [FROM with Stages](#from-with-stages): Reference specific stages from other Dockerfiles.
   - [FROM with Re-Alias](#from-with-re-alias): Rename specific stages from other Dockerfiles.
-- [COPY --from](#copy---from):
-  - [COPY/ADD from Another Dockerfile](#copyadd-from-another-dockerfile): Transfer files from another Dockerfile.
-
-  - [COPY/ADD with Stages](#copyadd-with-stages): Specify a stage when copying files from another Dockerfile.
+- [COPY --from](#copy-from):
+  - [COPY/ADD from Another Dockerfile](#copy-add-from-another-dockerfile): Transfer files from another Dockerfile.
+  - [COPY/ADD with Stages](#copy-add-with-stages): Specify a stage when copying files from another Dockerfile.
 
 ## Behavior
 
