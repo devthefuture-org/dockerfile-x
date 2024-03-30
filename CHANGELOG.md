@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.4](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.3.3...v1.3.4) (2024-03-30)
+
+
+### Bug Fixes
+
+* redeclareArgTop ([c47865e](https://codeberg.org/devthefuture/dockerfile-x/commit/c47865e64d0c008373776edd7a757569e1a55403))
+* redeclareArgTop [#12](https://codeberg.org/devthefuture/dockerfile-x/issues/12) ([964438c](https://codeberg.org/devthefuture/dockerfile-x/commit/964438c0781ade1278a9fccbca7106ba91722d55))
+
 ### [1.3.3](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.3.2...v1.3.3) (2024-01-06)
 
 
