@@ -1,3 +1,4 @@
+ARG JAVA_VERSION
 # See https://codeberg.org/devthefuture/dockerfile-x.
 ARG JAVA_VERSION=17
 # Even if no JDK is required for rtx, use an Ubuntu base image that incudes the JDK and which is also used by other

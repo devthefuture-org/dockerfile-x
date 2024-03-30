@@ -1,3 +1,7 @@
+ARG UBUNTU_VERSION
+ARG NODE_VERSION
+ARG NODE_PACKAGE
+ARG KUBECTL_VERSION
 # DOCKERFILE-X:START file="./inc/downloader.dockerfile" includedBy="dedup.dockerfile"
 # DOCKERFILE-X:START file="ubuntu.dockerfile" includedBy="inc/downloader.dockerfile"
 ARG UBUNTU_VERSION=22.04

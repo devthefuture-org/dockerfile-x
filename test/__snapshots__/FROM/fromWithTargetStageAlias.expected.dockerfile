@@ -1,3 +1,6 @@
+ARG UBUNTU_VERSION
+ARG NODE_VERSION
+ARG NODE_PACKAGE
 # DOCKERFILE-X:START file="./inc/node.dockerfile" includedBy="fromWithTargetStageAlias.dockerfile"
 # DOCKERFILE-X:START file="./downloader.dockerfile" includedBy="inc/node.dockerfile"
 # DOCKERFILE-X:START file="ubuntu.dockerfile" includedBy="inc/downloader.dockerfile"

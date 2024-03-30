@@ -1,3 +1,4 @@
+ARG UBUNTU_VERSION
 # DOCKERFILE-X:START file="inc/downloader.dockerfile" includedBy="include.dockerfile"
 # DOCKERFILE-X:START file="ubuntu.dockerfile" includedBy="inc/downloader.dockerfile"
 ARG UBUNTU_VERSION=22.04

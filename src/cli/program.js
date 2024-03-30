@@ -4,7 +4,7 @@ const fs = require("fs/promises")
 
 const { Command } = require("commander")
 
-const loadDockerfile = require("../core/loadDockerfile")
+const rooLoadDockerfile = require("../core/rootLoadDockerfile")
 const getDataFromStdin = require("../utils/getDataFromStdin")
 
 const pkg = require(`../../package.json`)
@@ -40,9 +40,12 @@ module.exports = function createProgram() {
         ? file
         : path.join(dockerContext, file)
 
-      const processedDockerfile = await loadDockerfile(absoluteDockerfilePath, {
-        dockerContext,
-      })
+      const processedDockerfile = await rooLoadDockerfile(
+        absoluteDockerfilePath,
+        {
+          dockerContext,
+        },
+      )
 
       if (output) {
         await fs.writeFile(output, processedDockerfile, "utf8")
