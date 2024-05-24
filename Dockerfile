@@ -37,8 +37,11 @@ COPY main.go ./
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -mod vendor -ldflags '-w -extldflags "-static"' -o dist-bin/dockerfile-x-frontend .
 
 FROM scratch
+
+# see https://github.com/moby/buildkit/blob/master/frontend/dockerfile/cmd/dockerfile-frontend/Dockerfile
 LABEL moby.buildkit.frontend.network.none="true"
 LABEL moby.buildkit.frontend.caps="moby.buildkit.frontend.inputs,moby.buildkit.frontend.subrequests,moby.buildkit.frontend.contexts"
+
 ENTRYPOINT [ "/dockerfile-x-frontend" ]
 ENV PATH=/
 ENV DOCKERFILEX_TMPDIR=/workspace
