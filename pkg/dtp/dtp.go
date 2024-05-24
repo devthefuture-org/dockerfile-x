@@ -34,9 +34,7 @@ func InjectDockerfileTransform(transform DockerfileTransform, client client.Clie
 		return
 	}
 	// Inject a proxy around the LLB client
-	opts := client.BuildOpts().Opts
-	opts["frontend.caps"] = "moby.buildkit.frontend.contexts"
-	proxy := NewDockerfileTransformingLLBProxy(llb, opts, transform)
+	proxy := NewDockerfileTransformingLLBProxy(llb, client.BuildOpts().Opts, transform)
 	setUnexportedField(reflect.ValueOf(client).Elem().FieldByName(fieldLLBClient), proxy)
 	err = nil
 	return
