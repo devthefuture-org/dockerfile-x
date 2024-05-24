@@ -1,6 +1,6 @@
-ARG UBUNTU_VERSION
 ARG NODE_VERSION
 ARG NODE_PACKAGE
+ARG UBUNTU_VERSION=22.04
 # DOCKERFILE-X:START file="./inc/node.dockerfile" includedBy="fromWithTarget.dockerfile"
 # DOCKERFILE-X:START file="./downloader.dockerfile" includedBy="inc/node.dockerfile"
 # DOCKERFILE-X:START file="ubuntu.dockerfile" includedBy="inc/downloader.dockerfile"

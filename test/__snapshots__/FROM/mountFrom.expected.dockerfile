@@ -1,4 +1,3 @@
-ARG UBUNTU_VERSION
 # DOCKERFILE-X:START file="./inc/mountFromParent.dockerfile" includedBy="mountFrom.dockerfile"
 # DOCKERFILE-X:START file="./ubuntu.dockerfile" includedBy="inc/mountFromParent.dockerfile"
 ARG UBUNTU_VERSION=22.04

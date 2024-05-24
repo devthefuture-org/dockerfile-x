@@ -1,4 +1,3 @@
-ARG UBUNTU_VERSION
 ARG NODE_VERSION
 ARG NODE_PACKAGE
 # DOCKERFILE-X:START file="./inc/downloader.dockerfile" includedBy="from.dockerfile"

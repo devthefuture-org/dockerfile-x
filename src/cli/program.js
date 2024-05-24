@@ -4,7 +4,7 @@ const fs = require("fs/promises")
 
 const { Command } = require("commander")
 
-const rooLoadDockerfile = require("../core/rootLoadDockerfile")
+const rootLoadDockerfile = require("../core/rootLoadDockerfile")
 const getDataFromStdin = require("../utils/getDataFromStdin")
 
 const pkg = require(`../../package.json`)
@@ -40,7 +40,7 @@ module.exports = function createProgram() {
         ? file
         : path.join(dockerContext, file)
 
-      const processedDockerfile = await rooLoadDockerfile(
+      const processedDockerfile = await rootLoadDockerfile(
         absoluteDockerfilePath,
         {
           dockerContext,
