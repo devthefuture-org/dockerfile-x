@@ -39,7 +39,7 @@
     "prepare": "husky install",
     "release": "standard-version",
     "push": "git push -f --follow-tags origin master",
-    "delivery": "yarn release && yarn push && npm publish && make docker-build && make docker-push"
+    "delivery": "yarn release && yarn push && npm publish && make docker-push"
   },
   "lint-staged": {
     "*.js": [

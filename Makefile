@@ -1,4 +1,6 @@
 # DOCKER
+PACKAGE_VERSION := $(shell jq -r '.version' package.json)
+PACKAGE_MAJOR_VERSION := $(shell echo $(PACKAGE_VERSION) | cut -d. -f1)
 
 setup-docker-multiarch:
 	docker buildx create --use --name mybuilder --driver docker-container
@@ -12,7 +14,10 @@ docker-build:
 
 docker-push:
 	docker buildx build --platform linux/amd64,linux/arm64 -t devthefuture/dockerfile-x --progress=plain . --push
-
+	docker buildx build --platform linux/amd64,linux/arm64 -t devthefuture/dockerfile-x:v$(PACKAGE_MAJOR_VERSION) --progress=plain . --push
+	docker buildx build --platform linux/amd64,linux/arm64 -t devthefuture/dockerfile-x:v$(PACKAGE_VERSION) --progress=plain . --push
+	docker buildx build --platform linux/amd64,linux/arm64 -t devthefuture/dockerfile-x:$(PACKAGE_MAJOR_VERSION) --progress=plain . --push
+	docker buildx build --platform linux/amd64,linux/arm64 -t devthefuture/dockerfile-x:$(PACKAGE_VERSION) --progress=plain . --push
 
 # GO
 
