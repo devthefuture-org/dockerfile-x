@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.4.0](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.3.4...v1.4.0) (2024-05-24)
+
+
+### Features
+
+* build-context + up buildkit version + refactor frontend ([9cc5446](https://codeberg.org/devthefuture/dockerfile-x/commit/9cc544658bb1f39d592df1d4b4ef5583392b159c))
+
+
+### Bug Fixes
+
+* top arg handling ([1989087](https://codeberg.org/devthefuture/dockerfile-x/commit/19890870967b384b9b30e5638718c1d5dc764dab))
+
 ### [1.3.4](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.3.3...v1.3.4) (2024-03-30)
 
 
