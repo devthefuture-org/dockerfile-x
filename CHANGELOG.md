@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.4.1](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.4.0...v1.4.1) (2024-05-24)
+
+
+### Bug Fixes
+
+* frontend caps build-context ([e3ed802](https://codeberg.org/devthefuture/dockerfile-x/commit/e3ed802e8010c2beccb4b536ce623bb9c507fbbe))
+
 ## [1.4.0](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.3.4...v1.4.0) (2024-05-24)
 
 
