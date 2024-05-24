@@ -11,7 +11,7 @@ ENV HOME=/home/ubuntu
 RUN chmod 0777 /home/ubuntu
 RUN mkdir /app && chown 1000:1000 /app
 # DOCKERFILE-X:END file="ubuntu.dockerfile" includedBy="inc/downloader.dockerfile"
-RUN apt-get update &&   DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends     curl     ca-certificates     wget     git   && rm -rf /var/lib/apt/lists/*
+RUN apt-get update &&   DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends   curl   ca-certificates   wget   git   && rm -rf /var/lib/apt/lists/*
 # DOCKERFILE-X:END file="./inc/downloader.dockerfile" includedBy="fromStageAlias.dockerfile"
 FROM downlo550515 AS build-node
 ARG NODE_VERSION=20.3.0
