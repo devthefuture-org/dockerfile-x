@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -16,9 +15,6 @@ import (
 
 	"github.com/moby/buildkit/client/llb"
 
-	// "github.com/moby/buildkit/exporter/containerimage/exptypes"
-
-	"github.com/moby/buildkit/frontend/dockerui"
 	"github.com/moby/buildkit/frontend/gateway/client"
 	"github.com/pkg/errors"
 )
@@ -27,7 +23,6 @@ const (
 	defaultDockerfileName = "Dockerfile"
 	localNameConfig       = "dockerfile"
 	localNameContext      = "context"
-	keyConfigPath         = "filename"
 	defaultExtension      = ".dockerfile"
 )
 
@@ -67,19 +62,16 @@ func loadFileFromContext(ctx context.Context, c client.Client, localCtx string, 
 	return xdockerfile, nil
 }
 
-func loadDockerfileX(ctx context.Context, c client.Client, src *dockerui.Source) (err error) {
-	buildOpts := c.BuildOpts()
-	opts := buildOpts.Opts
-	filename := opts[keyConfigPath]
-	if filename == "" {
-		filename = defaultDockerfileName
-	}
-	result, err := tryDockerfileX(ctx, c, filename)
+func loadDockerfileX(ctx context.Context, c client.Client, xdockerfile []byte) (result []byte, err error) {
+	filename, err := writeTempLocalFile(xdockerfile)
 	if err != nil {
-		return fmt.Errorf("failed to execute dockerfile-x: %s, Output: %s\n", err, result)
+		return nil, err
 	}
-	src.SourceMap.Data = []byte(result)
-	return nil
+	resultStr, err := tryDockerfileXProcessFile(ctx, c, filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute dockerfile-x: %s, Output: %s\n", err, result)
+	}
+	return []byte(resultStr), nil
 }
 
 func EnsureDir(filePath string, perm os.FileMode) error {
@@ -94,24 +86,22 @@ func EnsureDir(filePath string, perm os.FileMode) error {
 	return nil
 }
 
-func tryDockerfileX(ctx context.Context, c client.Client, filename string) (result string, err error) {
-	var lastMissingFile string
-
-	xdockerfile, err := loadFileFromContext(ctx, c, localNameConfig, filename)
-	if err != nil {
-		return "", fmt.Errorf("failed to load dockerfile '%s' from context: %s\n", filename, err)
-	}
-
-	uniqFilename := fmt.Sprintf("%s_%d", filename, time.Now().Unix())
+func writeTempLocalFile(xdockerfile []byte) (string, error) {
+	uniqFilename := fmt.Sprintf("dockerfile_%d", time.Now().Unix())
+	var err error
 	if err = EnsureDir(uniqFilename, 0755); err != nil {
 		return "", fmt.Errorf("Error creating parent dir for file '%s': %s\n", uniqFilename, err)
 	}
-	if err = ioutil.WriteFile(uniqFilename, xdockerfile, 0644); err != nil {
+	if err = os.WriteFile(uniqFilename, xdockerfile, 0644); err != nil {
 		return "", fmt.Errorf("Error writing to file '%s': %s\n", uniqFilename, err)
 	}
+	return uniqFilename, err
+}
 
+func tryDockerfileXProcessFile(ctx context.Context, c client.Client, filename string) (result string, err error) {
+	var lastMissingFile string
 	for {
-		cmd := exec.Command("dockerfile-x", "-f", uniqFilename)
+		cmd := exec.Command("dockerfile-x", "-f", filename)
 
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
@@ -153,7 +143,7 @@ func tryDockerfileX(ctx context.Context, c client.Client, filename string) (resu
 				if err = os.MkdirAll(path.Dir(missingFile), 0755); err != nil {
 					return "", err
 				}
-				if err = ioutil.WriteFile(missingFile, content, 0644); err != nil {
+				if err = os.WriteFile(missingFile, content, 0644); err != nil {
 					return "", fmt.Errorf("Error writing to file '%s': %s\n", missingFile, err)
 				}
 				continue
