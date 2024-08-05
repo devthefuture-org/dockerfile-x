@@ -1,11 +1,12 @@
 const parseDockerfile = require("../lib/parseDockerfile")
+const parseDockerfileXStartComment = require("../lib/parseDockerfileXStartComment")
 
 module.exports = function redeclareArgTop(dockerContent) {
   const instructions = parseDockerfile(dockerContent)
 
   const allArgs = new Set()
   let inGlobalTop = true
-  let inLocalTop = true
+  let inLocalTop = false
   for (let i = 0; i < instructions.length; i++) {
     const instruction = instructions[i]
     switch (instruction.name) {
@@ -16,7 +17,10 @@ module.exports = function redeclareArgTop(dockerContent) {
       }
       case "COMMENT": {
         if (instruction.raw.startsWith("# DOCKERFILE-X:START")) {
-          inLocalTop = true
+          const { includeType } = parseDockerfileXStartComment(instruction.raw)
+          if (includeType === "from" || includeType === "fromParam") {
+            inLocalTop = true
+          }
         }
         break
       }
@@ -26,8 +30,6 @@ module.exports = function redeclareArgTop(dockerContent) {
         }
         if (inLocalTop) {
           allArgs.add("ARG " + instruction.args[0])
-        } else {
-          allArgs.add("ARG " + instruction.args[0].split("=")[0])
         }
         break
       }

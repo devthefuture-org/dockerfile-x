@@ -10,8 +10,8 @@ RUN --mount=type=cache,target=/var/cache/apt   apt-get update &&   apt-get insta
 ENV RTX_VERBOSE=1
 # Make the tool versions available to derived images.
 COPY .tool-versions .
-# DOCKERFILE-X:START file="inc/python.dockerfile" includedBy="issue1.dockerfile"
+# DOCKERFILE-X:START file="inc/python.dockerfile" includedBy="issue1.dockerfile" includeType="include"
 FROM build AS python-build
 RUN --mount=type=cache,target=/var/cache/apt   apt-get update &&   apt-get install -y --no-install-recommends   libbz2-dev   libffi-dev   liblzma-dev   libncurses-dev   libreadline-dev   libssl-dev   libz-dev
 RUN rtx install python
-# DOCKERFILE-X:END file="inc/python.dockerfile" includedBy="issue1.dockerfile"
+# DOCKERFILE-X:END file="inc/python.dockerfile" includedBy="issue1.dockerfile" includeType="include"

@@ -42,6 +42,7 @@ module.exports = ({
           includePathRelative,
           relativeFilePath,
           includedContent,
+          includingInstruction: "from",
         }),
       )
       const asMatch = instruction.args.match(asMatchRegex)

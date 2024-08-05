@@ -2,10 +2,12 @@ module.exports = function generateIncluded({
   includePathRelative,
   relativeFilePath,
   includedContent,
+  includingInstruction,
 }) {
   const attrs = {
     file: includePathRelative,
     includedBy: relativeFilePath,
+    includeType: includingInstruction,
   }
   const attrsStr = Object.entries(attrs)
     .reduce((acc, [key, value]) => {

@@ -41,6 +41,7 @@ module.exports = ({
           includePathRelative,
           relativeFilePath,
           includedContent,
+          includingInstruction: "fromParam",
         }),
       )
 

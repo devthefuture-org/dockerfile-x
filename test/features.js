@@ -26,6 +26,10 @@ describe("FROM", () => {
   it("mountFrom", async () => {
     await testFixture("mountFrom")
   })
+
+  it("fromIncludeArg", async () => {
+    await testFixture("fromIncludeArg")
+  })
 })
 
 describe("COPY", () => {
