@@ -36,7 +36,7 @@ module.exports = function createProgram() {
       }
 
       const { context: dockerContext, output } = cmd
-      const absoluteDockerfilePath = file.startsWith("/")
+      const absoluteDockerfilePath = path.isAbsolute(file)
         ? file
         : path.join(dockerContext, file)
 
