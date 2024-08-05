@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.4.2](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.4.1...v1.4.2) (2024-08-05)
+
+
+### Bug Fixes
+
+* top arg only on from include before stage ([ab5dac9](https://codeberg.org/devthefuture/dockerfile-x/commit/ab5dac9f09d2722d9c3c60eca9b5208ade82cc1c))
+
 ### [1.4.1](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.4.0...v1.4.1) (2024-05-24)
 
 
