@@ -16,4 +16,7 @@ describe("issues", () => {
   it("include-target", async () => {
     await testFixture("issue1")
   })
+  it("preserve-instructions", async () => {
+    await testFixture("issue27")
+  })
 })
