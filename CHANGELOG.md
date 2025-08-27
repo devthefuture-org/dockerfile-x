@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.4.3](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.4.2...v1.4.3) (2025-08-27)
+
+
+### Bug Fixes
+
+* preserve dockerfile indentation and multiline ([ff669e5](https://codeberg.org/devthefuture/dockerfile-x/commit/ff669e5b419c74cf5950562fa723f0d607ef972a))
+
 ### [1.4.2](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.4.1...v1.4.2) (2024-08-05)
 
 
