@@ -17,7 +17,6 @@ module.exports = function generateIncluded({
     .join(" ")
 
   return (
-    "\n" +
     `# DOCKERFILE-X:START ${attrsStr}` +
     "\n" +
     includedContent +

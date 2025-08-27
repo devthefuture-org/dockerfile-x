@@ -2,7 +2,9 @@ ARG UBUNTU_VERSION=22.04
 FROM debian AS node
 ARG NODE_VERSION=20.3.0
 ARG NODE_PACKAGE=node-v$NODE_VERSION-linux-x64
-RUN curl https://nodejs.org/dist/v$NODE_VERSION/$NODE_PACKAGE.tar.gz   | tar -xzC /opt/   && mv /opt/$NODE_PACKAGE /opt/node
+RUN curl https://nodejs.org/dist/v$NODE_VERSION/$NODE_PACKAGE.tar.gz \
+  | tar -xzC /opt/ \
+  && mv /opt/$NODE_PACKAGE /opt/node
 # DOCKERFILE-X:START file="./inc/ubuntu.dockerfile" includedBy="fromIncludeArg.dockerfile" includeType="from"
 ARG UBUNTU_VERSION=22.04
 FROM ubuntu:$UBUNTU_VERSION AS ubuntu9e4275--final-stage

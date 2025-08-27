@@ -1444,7 +1444,7 @@ __metadata:
     prettier: ^3.0.3
     standard-version: ^9.5.0
   bin:
-    dockerfile-x: dist/index.js
+    dockerfile-x: bin/dockerfile-x
   languageName: unknown
   linkType: soft
 
