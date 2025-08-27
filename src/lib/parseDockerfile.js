@@ -38,8 +38,12 @@ module.exports = function parseDockerfile(content, options = {}) {
         : Math.max(startIdx, nextStartIdx - 1)
 
     // Recover the true start by scanning upward from endIdx until the header line (instruction keyword) is found
-    const startsWithName = (line, name) =>
-      new RegExp(`^\\s*${name}\\b`, "i").test(line)
+    const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const startsWithName = (line, name) => {
+      if (!name) return false
+      const re = new RegExp(`^\\s*${escapeRegExp(name)}\\b`, "i")
+      return re.test(line)
+    }
 
     let startIdxScan = endIdx
     if (instruction.name !== "COMMENT") {
