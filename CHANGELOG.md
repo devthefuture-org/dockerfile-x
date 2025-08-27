@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.4.4](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.4.3...v1.4.4) (2025-08-27)
+
+
+### Bug Fixes
+
+* case warning ([dea80d7](https://codeberg.org/devthefuture/dockerfile-x/commit/dea80d7877ceb050cddaee5c784540d1856a4f9b))
+* improve solidity avoiding regex that could break ([42f28f2](https://codeberg.org/devthefuture/dockerfile-x/commit/42f28f2e48f6a02682163c8362428793af7dbc7e))
+* regex for heredoc ([74fab2f](https://codeberg.org/devthefuture/dockerfile-x/commit/74fab2f8e98ad5734879af0190d6147c154d6df2))
+
 ### [1.4.3](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.4.2...v1.4.3) (2025-08-27)
 
 
