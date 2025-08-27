@@ -40,3 +40,9 @@ describe("COPY", () => {
     await testFixture("copyFromStage")
   })
 })
+
+describe("HEREDOC", () => {
+  it("heredoc", async () => {
+    await testFixture("heredoc")
+  })
+})
