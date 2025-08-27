@@ -24,7 +24,7 @@ COPY src src
 RUN yarn build:ncc
 RUN yarn pkg -t node18-linuxstatic-$(cat .nodearch) -o ./dist-bin/dockerfile-x --compress=GZip ./dist/index.js
 
-FROM alpine:3 as certs
+FROM alpine:3 AS certs
 RUN apk --update add ca-certificates
 
 FROM golang:1.21 AS build-frontend
