@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.4.5](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.4.4...v1.4.5) (2025-08-28)
+
+
+### Bug Fixes
+
+* preserve dockerfile instructions (in [#27](https://codeberg.org/devthefuture/dockerfile-x/issues/27), [#28](https://codeberg.org/devthefuture/dockerfile-x/issues/28)) ([2d14dd9](https://codeberg.org/devthefuture/dockerfile-x/commit/2d14dd92e73def443f8d6f5dc69b779f837a9925))
+
 ### [1.4.4](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.4.3...v1.4.4) (2025-08-27)
 
 
