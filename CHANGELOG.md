@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.5.0](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.4.5...v1.5.0) (2025-08-29)
+
+
+### Features
+
+* include args envs labels from file ([4923e5c](https://codeberg.org/devthefuture/dockerfile-x/commit/4923e5ce4941e9a677c96b8f3f7ed56230d158b4))
+* include external .env  file into `ARG`, `ENV`, `LABEL` instructions (requested in [#3](https://codeberg.org/devthefuture/dockerfile-x/issues/3)) ([9ab4d47](https://codeberg.org/devthefuture/dockerfile-x/commit/9ab4d47628b52e5976a9353740901a6a089f0a23))
+
+
+### Bug Fixes
+
+* missing dots in LABELs ([7cd9931](https://codeberg.org/devthefuture/dockerfile-x/commit/7cd99317da1e8aa4fa4f754d81fad1828f65a050))
+* missing hyphens in LABELs ([49924d6](https://codeberg.org/devthefuture/dockerfile-x/commit/49924d6b33b21517c2192143adc44616aeb6d85f))
+
 ### [1.4.5](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.4.4...v1.4.5) (2025-08-28)
 
 
