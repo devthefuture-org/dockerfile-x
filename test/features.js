@@ -4,6 +4,9 @@ describe("INCLUDE", () => {
   it("include", async () => {
     await testFixture("include")
   })
+  it("include_envvars", async () => {
+    await testFixture("issue3")
+  })
 })
 
 describe("FROM", () => {
