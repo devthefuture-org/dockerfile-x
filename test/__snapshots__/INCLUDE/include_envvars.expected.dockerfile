@@ -87,5 +87,6 @@ ENV SPACED_KEY="parsed"
 # DOCKERFILE-X:START file="./inc/custom-labels.env" includedBy="issue3.dockerfile" includeType="include"
 LABEL org.opencontainers.image.source="https://github.com/example/repo"
 LABEL org.opencontainers.image.revision="0123456789"
+LABEL org.label-schema.vcs-url="https://example.com/example/schema"
 # DOCKERFILE-X:END file="./inc/custom-labels.env" includedBy="issue3.dockerfile" includeType="include"
 ENTRYPOINT [ "/bin/sh", "-c", "env" ]
