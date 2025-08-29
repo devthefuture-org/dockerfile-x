@@ -1431,6 +1431,7 @@ __metadata:
     chai: ^4.3.8
     commander: ^11.0.0
     docker-file-parser: ^1.0.7
+    dotenv: ^17.2.1
     eslint: ^8.48.0
     eslint-config-prettier: ^9.0.0
     eslint-plugin-mocha: ^10.1.0
@@ -1463,6 +1464,13 @@ __metadata:
   dependencies:
     is-obj: ^2.0.0
   checksum: d5775790093c234ef4bfd5fbe40884ff7e6c87573e5339432870616331189f7f5d86575c5b5af2dcf0f61172990f4f734d07844b1f23482fff09e3c4bead05ea
+  languageName: node
+  linkType: hard
+
+"dotenv@npm:^17.2.1":
+  version: 17.2.1
+  resolution: "dotenv@npm:17.2.1"
+  checksum: 2a3842a5451eb64f41cd11bd30d4d9d83941058f952f5e3adc3ca470d381e46ed8acbb0c0e3059da9725df91b42796987fa1deb032fafac992c37b94870ef085
   languageName: node
   linkType: hard
 
