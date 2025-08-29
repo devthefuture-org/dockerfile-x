@@ -36,6 +36,9 @@ However, if you're working with Docker versions as old as 18.09, you can still e
 
 ## Features:
 - [INCLUDE](#include): Incorporate content as is from other Dockerfiles or snippets.
+- [INCLUDE_ARGS](#include_args): Converts a `.env` file into Dockerfile `ARG` instructions.
+- [INCLUDE_ENVS](#include_envs): Converts a `.env` file into Dockerfile `ENV` instructions.
+- [INCLUDE_LABELS](#include_labels): Converts a `.env` file into Dockerfile `LABEL` instructions.
 - [FROM](#from):
   - [FROM with Relative Paths](#from-with-relative-paths): Use other Dockerfiles as a base using relative paths.
   - [FROM with Stages](#from-with-stages): Reference specific stages from other Dockerfiles.
@@ -112,6 +115,75 @@ Easily include content from another Dockerfile or snippet, ensuring straightforw
 ```Dockerfile
 # Include another Dockerfile's content
 INCLUDE ./path/to/another/dockerfile
+```
+
+### INCLUDE_ARGS
+
+Converts key-value pairs from a `.env` file into Dockerfile `ARG` instructions.
+Use this to expose build-time variables without hardcoding them into the Dockerfile.
+
+```text
+# custom-args.env
+NODE_VERSION=20.11.1
+PNPM_VERSION=9.1.0
+```
+
+```Dockerfile
+# Include key-value pairs from file
+INCLUDE_ARGS ./path/to/custom-args.env
+```
+
+This expands to:
+```Dockerfile
+ARG NODE_VERSION="20.11.1"
+ARG PNPM_VERSION="9.1.0"
+```
+
+**Note:** Values can be overridden at build time with `--build-arg` if desired.
+
+### INCLUDE_ENVS
+
+Converts key-value pairs from a `.env` file into Dockerfile `ENV` instructions.
+Ideal for runtime configuration baked into the image.
+
+```text
+# custom-envvars.env
+NODE_ENV=production
+APP_PORT=8080
+```
+
+```Dockerfile
+# Include key-value pairs from file
+INCLUDE_ENVS ./path/to/custom-envvars.env
+```
+
+This expands to:
+```Dockerfile
+ENV NODE_ENV="production"
+ENV APP_PORT="8080"
+```
+
+### INCLUDE_LABELS
+Converts key-value pairs from a `.env` file into Dockerfile `LABEL` instructions.
+Useful for image metadata (e.g., authorship, version, VCS refs).
+
+```text
+# custom-labels.env
+org.opencontainers.image.title=myapp
+org.opencontainers.image.version=1.2.3
+org.opencontainers.image.revision=abc1234
+```
+
+```Dockerfile
+# Include key-value pairs from file
+INCLUDE_LABELS ./path/to/custom-labels.env
+```
+
+This expands to:
+```Dockerfile
+LABEL org.opencontainers.image.title="myapp" 
+LABEL org.opencontainers.image.version="1.2.3" 
+LABEL org.opencontainers.image.revision="abc1234"
 ```
 
 ### FROM
