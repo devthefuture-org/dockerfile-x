@@ -18,7 +18,7 @@ async function resolveEnvFilePath(filePath) {
 }
 
 function formatDockerInstruction(prefix, key, value) {
-  const cleanKey = key.replace(/[^A-Z0-9_.]/gi, "")
+  const cleanKey = key.replace(/[^A-Z0-9._-]/gi, "")
   const cleanValue = String(value || "")
     .replace(/\\/g, "\\\\")
     .replace(/\$/g, "\\$")
