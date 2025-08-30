@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.5.3](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.5.2...v1.5.3) (2025-08-30)
+
+
+### Bug Fixes
+
+* known vulnerabilities (reup / reported in [#29](https://codeberg.org/devthefuture/dockerfile-x/issues/29))  ([a5e5c80](https://codeberg.org/devthefuture/dockerfile-x/commit/a5e5c80fd45e51596f0443eb7401d1353e34f5a0))
+* put back vendor, .yarn/cache and .gitignore ([7a36941](https://codeberg.org/devthefuture/dockerfile-x/commit/7a36941267f0445597b25b0d31af8bf492b81909))
+* upgrade go packages ([5961b5b](https://codeberg.org/devthefuture/dockerfile-x/commit/5961b5b182c5d1e783d8b578ed12c19a3e98e52b))
+* upgrade node packages ([827a8b1](https://codeberg.org/devthefuture/dockerfile-x/commit/827a8b1339efcd3b56bcf12e2d9ff14c82a0cd08))
+
 ### [1.5.2](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.5.1...v1.5.2) (2025-08-30)
 
 ### [1.5.1](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.5.0...v1.5.1) (2025-08-30)
