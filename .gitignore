@@ -2,6 +2,7 @@ node_modules
 test/**/*.actual.*
 dist
 dist-bin
+vendor
 
 # yarn berry zero install
 .yarn/*
