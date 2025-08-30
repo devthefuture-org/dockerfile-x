@@ -2,10 +2,10 @@ node_modules
 test/**/*.actual.*
 dist
 dist-bin
-vendor
 
 # yarn berry zero install
 .yarn/*
+!.yarn/cache
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
