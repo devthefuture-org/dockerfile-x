@@ -2,7 +2,6 @@ package solver
 
 import (
 	"context"
-	"strings"
 	"sync"
 	"time"
 
@@ -29,34 +28,13 @@ func newEdge(ed Edge, op activeOp, index *edgeIndex) *edge {
 	e := &edge{
 		edge:               ed,
 		op:                 op,
-		depRequests:        map[pipe.Receiver]*dep{},
+		depRequests:        map[pipeReceiver]*dep{},
 		keyMap:             map[string]struct{}{},
 		cacheRecords:       map[string]*CacheRecord{},
 		cacheRecordsLoaded: map[string]struct{}{},
 		index:              index,
-		debug:              debugScheduler,
 	}
-	if !e.debug && len(debugSchedulerSteps) > 0 {
-		withParents := strings.HasSuffix(debugSchedulerSteps[0], "^")
-		name := strings.TrimSuffix(debugSchedulerSteps[0], "^")
-		for _, v := range debugSchedulerSteps {
-			if strings.Contains(name, v) {
-				e.debug = true
-				break
-			}
-		}
-		if !e.debug && withParents {
-			for _, vtx := range ed.Vertex.Inputs() {
-				name := strings.TrimSuffix(vtx.Vertex.Name(), "^")
-				for _, v := range debugSchedulerSteps {
-					if strings.Contains(name, v) {
-						e.debug = true
-						break
-					}
-				}
-			}
-		}
-	}
+	e.debug = debugSchedulerCheckEdge(e)
 	return e
 }
 
@@ -65,14 +43,14 @@ type edge struct {
 	op   activeOp
 
 	edgeState
-	depRequests map[pipe.Receiver]*dep
+	depRequests map[pipeReceiver]*dep
 	deps        []*dep
 
-	cacheMapReq        pipe.Receiver
+	cacheMapReq        pipeReceiver
 	cacheMapDone       bool
 	cacheMapIndex      int
 	cacheMapDigests    []digest.Digest
-	execReq            pipe.Receiver
+	execReq            pipeReceiver
 	execCacheLoad      bool
 	err                error
 	cacheRecords       map[string]*CacheRecord
@@ -99,11 +77,11 @@ type edge struct {
 
 // dep holds state for a dependant edge
 type dep struct {
-	req pipe.Receiver
+	req pipeReceiver
 	edgeState
 	index             Index
 	keyMap            map[string]*CacheKey
-	slowCacheReq      pipe.Receiver
+	slowCacheReq      pipeReceiver
 	slowCacheComplete bool
 	slowCacheFoundKey bool
 	slowCacheKey      *ExportableCacheKey
@@ -122,7 +100,7 @@ func newDep(i Index) *dep {
 
 // edgePipe is a pipe for requests between two edges
 type edgePipe struct {
-	*pipe.Pipe
+	*pipe.Pipe[*edgeRequest, any]
 	From, Target *edge
 	mu           sync.Mutex
 }
@@ -198,22 +176,18 @@ func (e *edge) isComplete() bool {
 }
 
 // finishIncoming finalizes the incoming pipe request
-func (e *edge) finishIncoming(req pipe.Sender) {
+func (e *edge) finishIncoming(req pipeSender) {
 	err := e.err
 	if req.Request().Canceled && err == nil {
 		err = context.Canceled
 	}
-	if e.debug {
-		bklog.G(context.TODO()).Debugf("finishIncoming %s %v %#v desired=%s", e.edge.Vertex.Name(), err, e.edgeState, req.Request().Payload.(*edgeRequest).desiredState)
-	}
+	debugSchedulerFinishIncoming(e, err, req)
 	req.Finalize(&e.edgeState, err)
 }
 
 // updateIncoming updates the current value of incoming pipe request
-func (e *edge) updateIncoming(req pipe.Sender) {
-	if e.debug {
-		bklog.G(context.TODO()).Debugf("updateIncoming %s %#v desired=%s", e.edge.Vertex.Name(), e.edgeState, req.Request().Payload.(*edgeRequest).desiredState)
-	}
+func (e *edge) updateIncoming(req pipeSender) {
+	debugSchedulerUpdateIncoming(e, req)
 	req.Update(&e.edgeState)
 }
 
@@ -353,19 +327,9 @@ func (e *edge) skipPhase2FastCache(dep *dep) bool {
 //     requests were not completed
 //  2. this function may not return outgoing requests if it has completed all
 //     incoming requests
-func (e *edge) unpark(incoming []pipe.Sender, updates, allPipes []pipe.Receiver, f *pipeFactory) {
+func (e *edge) unpark(incoming []pipeSender, updates, allPipes []pipeReceiver, f *pipeFactory) {
 	// process all incoming changes
-	depChanged := false
-	for _, upt := range updates {
-		if changed := e.processUpdate(upt); changed {
-			depChanged = true
-		}
-	}
-
-	if depChanged {
-		// the dep responses had changes. need to reevaluate edge state
-		e.recalcCurrentState()
-	}
+	e.processUpdates(updates)
 
 	desiredState, done := e.respondToIncoming(incoming, allPipes)
 	if done {
@@ -376,7 +340,7 @@ func (e *edge) unpark(incoming []pipe.Sender, updates, allPipes []pipe.Receiver,
 	// set up new outgoing requests if needed
 	if e.cacheMapReq == nil && (e.cacheMap == nil || len(e.cacheRecords) == 0) {
 		index := e.cacheMapIndex
-		e.cacheMapReq = f.NewFuncRequest(func(ctx context.Context) (interface{}, error) {
+		e.cacheMapReq = f.NewFuncRequest(func(ctx context.Context) (any, error) {
 			cm, err := e.op.CacheMap(ctx, index)
 			return cm, errors.Wrap(err, "failed to load cache key")
 		})
@@ -413,156 +377,45 @@ func (e *edge) markFailed(f *pipeFactory, err error) {
 	})
 }
 
+func (e *edge) processUpdates(updates []pipe.Receiver[*edgeRequest, any]) {
+	depChanged := false
+	for _, upt := range updates {
+		depChanged = e.processUpdate(upt) || depChanged
+	}
+
+	if depChanged {
+		e.recalcCurrentState()
+	}
+}
+
 // processUpdate is called by unpark for every updated pipe request
-func (e *edge) processUpdate(upt pipe.Receiver) (depChanged bool) {
+func (e *edge) processUpdate(upt pipeReceiver) (depChanged bool) {
 	// response for cachemap request
 	if upt == e.cacheMapReq && upt.Status().Completed {
-		if err := upt.Status().Err; err != nil {
-			e.cacheMapReq = nil
-			if !upt.Status().Canceled && e.err == nil {
-				e.err = err
-			}
-		} else {
-			resp := upt.Status().Value.(*cacheMapResp)
-			e.cacheMap = resp.CacheMap
-			e.cacheMapDone = resp.complete
-			e.cacheMapIndex++
-			if len(e.deps) == 0 {
-				e.cacheMapDigests = append(e.cacheMapDigests, e.cacheMap.Digest)
-				if !e.op.IgnoreCache() {
-					keys, err := e.op.Cache().Query(nil, 0, e.cacheMap.Digest, e.edge.Index)
-					if err != nil {
-						bklog.G(context.TODO()).Error(errors.Wrap(err, "invalid query response")) // make the build fail for this error
-					} else {
-						for _, k := range keys {
-							k.vtx = e.edge.Vertex.Digest()
-							records, err := e.op.Cache().Records(context.Background(), k)
-							if err != nil {
-								bklog.G(context.TODO()).Errorf("error receiving cache records: %v", err)
-								continue
-							}
-
-							for _, r := range records {
-								e.cacheRecords[r.ID] = r
-							}
-
-							e.keys = append(e.keys, e.makeExportable(k, records))
-						}
-					}
-				}
-				e.state = edgeStatusCacheSlow
-			}
-			if e.allDepsHaveKeys(false) {
-				e.keysDidChange = true
-			}
-			// probe keys that were loaded before cache map
-			for i, dep := range e.deps {
-				e.probeCache(dep, withSelector(dep.keys, e.cacheMap.Deps[i].Selector))
-				e.checkDepMatchPossible(dep)
-			}
-			if !e.cacheMapDone {
-				e.cacheMapReq = nil
-			}
-		}
+		e.processCacheMapReq()
 		return true
 	}
 
 	// response for exec request
 	if upt == e.execReq && upt.Status().Completed {
-		if err := upt.Status().Err; err != nil {
-			e.execReq = nil
-			if e.execCacheLoad {
-				for k := range e.cacheRecordsLoaded {
-					delete(e.cacheRecords, k)
-				}
-			} else if !upt.Status().Canceled && e.err == nil {
-				e.err = err
-			}
-		} else {
-			e.result = NewSharedCachedResult(upt.Status().Value.(CachedResult))
-			e.state = edgeStatusComplete
-		}
+		e.processExecReq()
 		return true
 	}
 
 	// response for requests to dependencies
 	if dep, ok := e.depRequests[upt]; ok {
-		if err := upt.Status().Err; !upt.Status().Canceled && upt.Status().Completed && err != nil {
-			if e.err == nil {
-				e.err = err
-			}
-			dep.err = err
-		}
-
-		if upt.Status().Value == nil {
-			return
-		}
-		state, isEdgeState := upt.Status().Value.(*edgeState)
-		if !isEdgeState {
-			bklog.G(context.TODO()).Warnf("invalid edgeState value for update: %T", state)
-			return
-		}
-
-		if len(dep.keys) < len(state.keys) {
-			newKeys := state.keys[len(dep.keys):]
-			if e.cacheMap != nil {
-				e.probeCache(dep, withSelector(newKeys, e.cacheMap.Deps[dep.index].Selector))
-				dep.edgeState.keys = state.keys
-				if e.allDepsHaveKeys(false) {
-					e.keysDidChange = true
-				}
-			}
-			depChanged = true
-		}
-		if dep.state != edgeStatusComplete && state.state == edgeStatusComplete {
-			e.keysDidChange = true
-		}
-
-		recheck := state.state != dep.state
-
-		dep.edgeState = *state
-
-		if recheck && e.cacheMap != nil {
-			e.checkDepMatchPossible(dep)
-			depChanged = true
-		}
-
-		return
+		return e.processDepReq(dep)
 	}
 
 	// response for result based cache function
 	for i, dep := range e.deps {
 		if upt == dep.slowCacheReq && upt.Status().Completed {
-			if err := upt.Status().Err; err != nil {
-				dep.slowCacheReq = nil
-				if !upt.Status().Canceled && e.err == nil {
-					e.err = upt.Status().Err
-				}
-			} else if !dep.slowCacheComplete {
-				dgst := upt.Status().Value.(digest.Digest)
-				if e.cacheMap.Deps[int(dep.index)].ComputeDigestFunc != nil && dgst != "" {
-					k := NewCacheKey(dgst, "", -1)
-					dep.slowCacheKey = &ExportableCacheKey{CacheKey: k, Exporter: &exporter{k: k}}
-					slowKeyExp := CacheKeyWithSelector{CacheKey: *dep.slowCacheKey}
-					defKeys := make([]CacheKeyWithSelector, 0, len(dep.result.CacheKeys()))
-					for _, dk := range dep.result.CacheKeys() {
-						defKeys = append(defKeys, CacheKeyWithSelector{CacheKey: dk, Selector: e.cacheMap.Deps[i].Selector})
-					}
-					dep.slowCacheFoundKey = e.probeCache(dep, []CacheKeyWithSelector{slowKeyExp})
-
-					// connect def key to slow key
-					e.op.Cache().Query(append(defKeys, slowKeyExp), dep.index, e.cacheMap.Digest, e.edge.Index)
-				}
-
-				dep.slowCacheComplete = true
-				e.keysDidChange = true
-				e.checkDepMatchPossible(dep) // not matching key here doesn't set nocachematch possible to true
-			}
+			e.processDepSlowCacheReq(i, dep)
 			return true
 		}
 	}
 
-	return
+	return false
 }
 
 // recalcCurrentState is called by unpark to recompute internal state after
@@ -642,10 +495,7 @@ func (e *edge) recalcCurrentState() {
 			isSlowIncomplete := (e.slowCacheFunc(dep) != nil || e.preprocessFunc(dep) != nil) && (dep.state == edgeStatusCacheSlow || (dep.state == edgeStatusComplete && !dep.slowCacheComplete))
 
 			if dep.state > stLow && len(dep.keyMap) == 0 && !isSlowIncomplete {
-				stLow = dep.state
-				if stLow > edgeStatusCacheSlow {
-					stLow = edgeStatusCacheSlow
-				}
+				stLow = min(dep.state, edgeStatusCacheSlow)
 			}
 			effectiveState := dep.state
 			if dep.state == edgeStatusCacheSlow && isSlowCacheIncomplete {
@@ -707,9 +557,7 @@ func (e *edge) recalcCurrentState() {
 					}
 					if len(openKeys) == 0 {
 						e.state = edgeStatusCacheSlow
-						if e.debug {
-							bklog.G(context.TODO()).Debugf("upgrade to cache-slow because no open keys")
-						}
+						debugSchedulerUpgradeCacheSlow(e)
 					}
 				}
 			}
@@ -717,9 +565,154 @@ func (e *edge) recalcCurrentState() {
 	}
 }
 
+func (e *edge) processCacheMapReq() {
+	upt := e.cacheMapReq
+	if err := upt.Status().Err; err != nil {
+		e.cacheMapReq = nil
+		if !upt.Status().Canceled && e.err == nil {
+			e.err = err
+		}
+		return
+	}
+
+	resp := upt.Status().Value.(*cacheMapResp)
+	e.cacheMap = resp.CacheMap
+	e.cacheMapDone = resp.complete
+	e.cacheMapIndex++
+	if len(e.deps) == 0 {
+		e.cacheMapDigests = append(e.cacheMapDigests, e.cacheMap.Digest)
+		if !e.op.IgnoreCache() {
+			keys, err := e.op.Cache().Query(nil, 0, e.cacheMap.Digest, e.edge.Index)
+			if err != nil {
+				bklog.G(context.TODO()).Error(errors.Wrap(err, "invalid query response")) // make the build fail for this error
+			} else {
+				for _, k := range keys {
+					k.vtx = e.edge.Vertex.Digest()
+					records, err := e.op.Cache().Records(context.Background(), k)
+					if err != nil {
+						bklog.G(context.TODO()).Errorf("error receiving cache records: %v", err)
+						continue
+					}
+
+					for _, r := range records {
+						e.cacheRecords[r.ID] = r
+					}
+
+					e.keys = append(e.keys, e.makeExportable(k, records))
+				}
+			}
+		}
+		e.state = edgeStatusCacheSlow
+	}
+	if e.allDepsHaveKeys(false) {
+		e.keysDidChange = true
+	}
+	// probe keys that were loaded before cache map
+	for i, dep := range e.deps {
+		e.probeCache(dep, withSelector(dep.keys, e.cacheMap.Deps[i].Selector))
+		e.checkDepMatchPossible(dep)
+	}
+	if !e.cacheMapDone {
+		e.cacheMapReq = nil
+	}
+}
+
+func (e *edge) processExecReq() {
+	upt := e.execReq
+	if err := upt.Status().Err; err != nil {
+		e.execReq = nil
+		if e.execCacheLoad {
+			for k := range e.cacheRecordsLoaded {
+				delete(e.cacheRecords, k)
+			}
+		} else if !upt.Status().Canceled && e.err == nil {
+			e.err = err
+		}
+		return
+	}
+
+	e.result = NewSharedCachedResult(upt.Status().Value.(CachedResult))
+	e.state = edgeStatusComplete
+}
+
+func (e *edge) processDepReq(dep *dep) (depChanged bool) {
+	upt := dep.req
+	if err := upt.Status().Err; !upt.Status().Canceled && upt.Status().Completed && err != nil {
+		if e.err == nil {
+			e.err = err
+		}
+		dep.err = err
+	}
+
+	if upt.Status().Value == nil {
+		return false
+	}
+
+	state, isEdgeState := upt.Status().Value.(*edgeState)
+	if !isEdgeState {
+		bklog.G(context.TODO()).Warnf("invalid edgeState value for update: %T", state)
+		return false
+	}
+
+	if len(dep.keys) < len(state.keys) {
+		newKeys := state.keys[len(dep.keys):]
+		if e.cacheMap != nil {
+			e.probeCache(dep, withSelector(newKeys, e.cacheMap.Deps[dep.index].Selector))
+			dep.keys = state.keys
+			if e.allDepsHaveKeys(false) {
+				e.keysDidChange = true
+			}
+		}
+		depChanged = true
+	}
+
+	if dep.state != edgeStatusComplete && state.state == edgeStatusComplete {
+		e.keysDidChange = true
+	}
+
+	recheck := state.state != dep.state
+
+	dep.edgeState = *state
+
+	if recheck && e.cacheMap != nil {
+		e.checkDepMatchPossible(dep)
+		depChanged = true
+	}
+	return depChanged
+}
+
+func (e *edge) processDepSlowCacheReq(index int, dep *dep) {
+	upt := dep.slowCacheReq
+	if err := upt.Status().Err; err != nil {
+		dep.slowCacheReq = nil
+		if !upt.Status().Canceled && e.err == nil {
+			e.err = upt.Status().Err
+		}
+	} else if !dep.slowCacheComplete {
+		dgst := upt.Status().Value.(digest.Digest)
+		if e.cacheMap.Deps[int(dep.index)].ComputeDigestFunc != nil && dgst != "" {
+			k := NewCacheKey(dgst, "", -1)
+			dep.slowCacheKey = &ExportableCacheKey{CacheKey: k, Exporter: &exporter{k: k}}
+			slowKeyExp := CacheKeyWithSelector{CacheKey: *dep.slowCacheKey}
+			defKeys := make([]CacheKeyWithSelector, 0, len(dep.result.CacheKeys()))
+			for _, dk := range dep.result.CacheKeys() {
+				defKeys = append(defKeys, CacheKeyWithSelector{CacheKey: dk, Selector: e.cacheMap.Deps[index].Selector})
+			}
+			dep.slowCacheFoundKey = e.probeCache(dep, []CacheKeyWithSelector{slowKeyExp})
+
+			// connect def key to slow key
+			e.op.Cache().Query(append(defKeys, slowKeyExp), dep.index, e.cacheMap.Digest, e.edge.Index)
+		}
+
+		dep.slowCacheComplete = true
+		e.keysDidChange = true
+		e.checkDepMatchPossible(dep) // not matching key here doesn't set nocachematch possible to true
+	}
+}
+
 // respondToIncoming responds to all incoming requests. completing or
 // updating them when possible
-func (e *edge) respondToIncoming(incoming []pipe.Sender, allPipes []pipe.Receiver) (edgeStatusType, bool) {
+func (e *edge) respondToIncoming(incoming []pipeSender, allPipes []pipeReceiver) (edgeStatusType, bool) {
 	// detect the result state for the requests
 	allIncomingCanComplete := true
 	desiredState := e.state
@@ -731,7 +724,7 @@ func (e *edge) respondToIncoming(incoming []pipe.Sender, allPipes []pipe.Receive
 		for _, req := range incoming {
 			if !req.Request().Canceled {
 				allCanceled = false
-				if r := req.Request().Payload.(*edgeRequest); desiredState < r.desiredState {
+				if r := req.Request().Payload; desiredState < r.desiredState {
 					desiredState = r.desiredState
 					if e.hasActiveOutgoing || r.desiredState == edgeStatusComplete || r.currentKeys == len(e.keys) {
 						allIncomingCanComplete = false
@@ -746,9 +739,7 @@ func (e *edge) respondToIncoming(incoming []pipe.Sender, allPipes []pipe.Receive
 		allIncomingCanComplete = false
 	}
 
-	if e.debug {
-		bklog.G(context.TODO()).Debugf("status state=%s cancomplete=%v hasouts=%v noPossibleCache=%v depsCacheFast=%v keys=%d cacheRecords=%d", e.state, allIncomingCanComplete, e.hasActiveOutgoing, e.noCacheMatchPossible, e.allDepsCompletedCacheFast, len(e.keys), len(e.cacheRecords))
-	}
+	debugSchedulerRespondToIncomingStatus(e, allIncomingCanComplete)
 
 	if allIncomingCanComplete && e.hasActiveOutgoing {
 		// cancel all current requests
@@ -757,7 +748,7 @@ func (e *edge) respondToIncoming(incoming []pipe.Sender, allPipes []pipe.Receive
 		}
 
 		// can close all but one requests
-		var leaveOpen pipe.Sender
+		var leaveOpen pipeSender
 		for _, req := range incoming {
 			if !req.Request().Canceled {
 				leaveOpen = req
@@ -784,7 +775,7 @@ func (e *edge) respondToIncoming(incoming []pipe.Sender, allPipes []pipe.Receive
 
 	// update incoming based on current state
 	for _, req := range incoming {
-		r := req.Request().Payload.(*edgeRequest)
+		r := req.Request().Payload
 		if req.Request().Canceled {
 			e.finishIncoming(req)
 		} else if !e.hasActiveOutgoing && e.state >= r.desiredState {
@@ -798,82 +789,117 @@ func (e *edge) respondToIncoming(incoming []pipe.Sender, allPipes []pipe.Receive
 
 // createInputRequests creates new requests for dependencies or async functions
 // that need to complete to continue processing the edge
-func (e *edge) createInputRequests(desiredState edgeStatusType, f *pipeFactory, force bool) bool {
-	addedNew := false
-
+func (e *edge) createInputRequests(desiredState edgeStatusType, f *pipeFactory, force bool) (addedNew bool) {
 	// initialize deps state
-	if e.deps == nil {
-		e.depRequests = make(map[pipe.Receiver]*dep)
-		e.deps = make([]*dep, 0, len(e.edge.Vertex.Inputs()))
-		for i := range e.edge.Vertex.Inputs() {
-			e.deps = append(e.deps, newDep(Index(i)))
-		}
-	}
+	e.ensureDepsInitialized()
 
 	// cycle all dependencies. set up outgoing requests if needed
 	for _, dep := range e.deps {
-		desiredStateDep := dep.state
-
-		if e.noCacheMatchPossible || force {
-			desiredStateDep = edgeStatusComplete
-		} else if dep.state == edgeStatusInitial && desiredState > dep.state {
-			desiredStateDep = edgeStatusCacheFast
-		} else if dep.state == edgeStatusCacheFast && desiredState > dep.state {
-			// wait all deps to complete cache fast before continuing with slow cache
-			if (e.allDepsCompletedCacheFast && len(e.keys) == 0) || len(dep.keyMap) == 0 || e.allDepsHaveKeys(true) {
-				if !e.skipPhase2FastCache(dep) && e.cacheMap != nil {
-					desiredStateDep = edgeStatusCacheSlow
-				}
-			}
-		} else if e.cacheMap != nil && dep.state == edgeStatusCacheSlow && desiredState == edgeStatusComplete {
-			// if all deps have completed cache-slow or content based cache for input is available
-			if (len(dep.keyMap) == 0 || e.allDepsCompletedCacheSlow || (!e.skipPhase2FastCache(dep) && e.slowCacheFunc(dep) != nil)) && (len(e.cacheRecords) == 0) {
-				if len(dep.keyMap) == 0 || !e.skipPhase2SlowCache(dep) {
-					desiredStateDep = edgeStatusComplete
-				}
-			}
-		} else if e.cacheMap != nil && dep.state == edgeStatusCacheSlow && e.slowCacheFunc(dep) != nil && desiredState == edgeStatusCacheSlow {
-			if len(dep.keyMap) == 0 || !e.skipPhase2SlowCache(dep) {
-				desiredStateDep = edgeStatusComplete
-			}
-		}
+		desiredStateDep := e.desiredStateDep(dep, desiredState, force)
 
 		// outgoing request is needed
 		if dep.state < desiredStateDep {
-			addNew := true
-			if dep.req != nil && !dep.req.Status().Completed {
-				if dep.req.Request().(*edgeRequest).desiredState != desiredStateDep {
-					dep.req.Cancel()
-				} else {
-					addNew = false
-				}
-			}
-			if addNew {
-				req := f.NewInputRequest(e.edge.Vertex.Inputs()[int(dep.index)], &edgeRequest{
-					currentState: dep.edgeState,
-					desiredState: desiredStateDep,
-					currentKeys:  len(dep.keys),
-				})
-				e.depRequests[req] = dep
-				dep.req = req
-				addedNew = true
-			}
+			addedNew = e.createOutgoingRequest(dep, desiredStateDep, f) || addedNew
+		} else {
+			debugSchedulerSkipInputRequestBasedOnDepState(e, dep, desiredStateDep)
 		}
+
 		// initialize function to compute cache key based on dependency result
-		if dep.state == edgeStatusComplete && dep.slowCacheReq == nil && (e.slowCacheFunc(dep) != nil || e.preprocessFunc(dep) != nil) && e.cacheMap != nil {
-			pfn := e.preprocessFunc(dep)
-			fn := e.slowCacheFunc(dep)
-			res := dep.result
-			func(pfn PreprocessFunc, fn ResultBasedCacheFunc, res Result, index Index) {
-				dep.slowCacheReq = f.NewFuncRequest(func(ctx context.Context) (interface{}, error) {
-					v, err := e.op.CalcSlowCache(ctx, index, pfn, fn, res)
-					return v, errors.Wrap(err, "failed to compute cache key")
-				})
-			}(pfn, fn, res, dep.index)
-			addedNew = true
-		}
+		addedNew = e.computeCacheKeyFromDep(dep, f) || addedNew
 	}
 	return addedNew
+}
+
+func (e *edge) ensureDepsInitialized() {
+	if e.deps != nil {
+		return
+	}
+
+	e.depRequests = make(map[pipeReceiver]*dep)
+	e.deps = make([]*dep, 0, len(e.edge.Vertex.Inputs()))
+	for i := range e.edge.Vertex.Inputs() {
+		e.deps = append(e.deps, newDep(Index(i)))
+	}
+}
+
+func (e *edge) desiredStateDep(dep *dep, desiredState edgeStatusType, force bool) edgeStatusType {
+	if e.noCacheMatchPossible || force {
+		return edgeStatusComplete
+	}
+
+	if dep.state == edgeStatusInitial && desiredState > dep.state {
+		return edgeStatusCacheFast
+	}
+
+	if dep.state == edgeStatusCacheFast && desiredState > dep.state {
+		// wait all deps to complete cache fast before continuing with slow cache
+		if (e.allDepsCompletedCacheFast && len(e.keys) == 0) || len(dep.keyMap) == 0 || e.allDepsHaveKeys(true) {
+			if !e.skipPhase2FastCache(dep) && e.cacheMap != nil {
+				return edgeStatusCacheSlow
+			}
+		}
+		return dep.state
+	}
+
+	if e.cacheMap != nil && dep.state == edgeStatusCacheSlow && desiredState == edgeStatusComplete {
+		// if all deps have completed cache-slow or content based cache for input is available
+		if (len(dep.keyMap) == 0 || e.allDepsCompletedCacheSlow || (!e.skipPhase2FastCache(dep) && e.slowCacheFunc(dep) != nil)) && (len(e.cacheRecords) == 0) {
+			if len(dep.keyMap) == 0 || !e.skipPhase2SlowCache(dep) {
+				return edgeStatusComplete
+			}
+		}
+		return dep.state
+	}
+
+	if e.cacheMap != nil && dep.state == edgeStatusCacheSlow && e.slowCacheFunc(dep) != nil && desiredState == edgeStatusCacheSlow {
+		if len(dep.keyMap) == 0 || !e.skipPhase2SlowCache(dep) {
+			return edgeStatusComplete
+		}
+		return dep.state
+	}
+
+	return dep.state
+}
+
+func (e *edge) createOutgoingRequest(dep *dep, desiredStateDep edgeStatusType, f *pipeFactory) (addedNew bool) {
+	if dep.req != nil && !dep.req.Status().Completed {
+		if dep.req.Request().desiredState == desiredStateDep {
+			debugSchedulerSkipInputRequestBasedOnExistingRequest(e, dep, desiredStateDep)
+			return false
+		}
+		debugSchedulerCancelInputRequest(e, dep, desiredStateDep)
+		dep.req.Cancel()
+	}
+
+	debugSchedulerAddInputRequest(e, dep, desiredStateDep)
+	req := f.NewInputRequest(e.edge.Vertex.Inputs()[int(dep.index)], &edgeRequest{
+		currentState: dep.edgeState,
+		desiredState: desiredStateDep,
+		currentKeys:  len(dep.keys),
+	})
+	e.depRequests[req] = dep
+	dep.req = req
+	return true
+}
+
+func (e *edge) computeCacheKeyFromDep(dep *dep, f *pipeFactory) (addedNew bool) {
+	if dep.state != edgeStatusComplete || dep.slowCacheReq != nil || e.cacheMap == nil {
+		return false
+	}
+
+	pfn := e.preprocessFunc(dep)
+	fn := e.slowCacheFunc(dep)
+	if pfn == nil && fn == nil {
+		return false
+	}
+
+	res := dep.result
+	index := dep.index
+	dep.slowCacheReq = f.NewFuncRequest(func(ctx context.Context) (any, error) {
+		v, err := e.op.CalcSlowCache(ctx, index, pfn, fn, res)
+		return v, errors.Wrap(err, "failed to compute cache key")
+	})
+	return true
 }
 
 // execIfPossible creates a request for getting the edge result if there is
@@ -904,13 +930,13 @@ func (e *edge) execIfPossible(f *pipeFactory) bool {
 
 // postpone delays exec to next unpark invocation if we have unprocessed keys
 func (e *edge) postpone(f *pipeFactory) {
-	f.NewFuncRequest(func(context.Context) (interface{}, error) {
+	f.NewFuncRequest(func(context.Context) (any, error) {
 		return nil, nil
 	})
 }
 
 // loadCache creates a request to load edge result from cache
-func (e *edge) loadCache(ctx context.Context) (interface{}, error) {
+func (e *edge) loadCache(ctx context.Context) (any, error) {
 	recs := make([]*CacheRecord, 0, len(e.cacheRecords))
 	for _, r := range e.cacheRecords {
 		recs = append(recs, r)
@@ -930,7 +956,7 @@ func (e *edge) loadCache(ctx context.Context) (interface{}, error) {
 }
 
 // execOp creates a request to execute the vertex operation
-func (e *edge) execOp(ctx context.Context) (interface{}, error) {
+func (e *edge) execOp(ctx context.Context) (any, error) {
 	cacheKeys, inputs := e.commitOptions()
 	results, subExporters, err := e.op.Exec(ctx, toResultSlice(inputs))
 	if err != nil {
@@ -1019,4 +1045,14 @@ func withSelector(keys []ExportableCacheKey, selector digest.Digest) []CacheKeyW
 		out[i] = CacheKeyWithSelector{Selector: selector, CacheKey: k}
 	}
 	return out
+}
+
+type (
+	pipeRequest  = pipe.Request[*edgeRequest]
+	pipeSender   = pipe.Sender[*edgeRequest, any]
+	pipeReceiver = pipe.Receiver[*edgeRequest, any]
+)
+
+func newPipe(req pipeRequest) *pipe.Pipe[*edgeRequest, any] {
+	return pipe.New[*edgeRequest, any](req)
 }

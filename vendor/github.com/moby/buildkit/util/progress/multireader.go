@@ -2,6 +2,7 @@ package progress
 
 import (
 	"context"
+	"errors"
 	"io"
 	"sync"
 )
@@ -95,6 +96,7 @@ func (mr *MultiReader) Reader(ctx context.Context) Reader {
 		mr.mu.Lock()
 		defer mr.mu.Unlock()
 		delete(mr.writers, w)
+		closeWriter(context.Cause(ctx))
 	}()
 
 	if !mr.initialized {
@@ -109,7 +111,7 @@ func (mr *MultiReader) handle() error {
 	for {
 		p, err := mr.main.Read(context.TODO())
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				mr.mu.Lock()
 				cancelErr := context.Canceled
 				for w, c := range mr.writers {

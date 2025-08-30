@@ -1,6 +1,7 @@
 package dockerfile2llb
 
 import (
+	"maps"
 	"sort"
 
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
@@ -43,41 +44,29 @@ func newOutlineCapture() outlineCapture {
 }
 
 func (o outlineCapture) clone() outlineCapture {
-	allArgs := map[string]argInfo{}
-	for k, v := range o.allArgs {
-		allArgs[k] = v
-	}
-	usedArgs := map[string]struct{}{}
-	for k := range o.usedArgs {
-		usedArgs[k] = struct{}{}
-	}
-	secrets := map[string]secretInfo{}
-	for k, v := range o.secrets {
-		secrets[k] = v
-	}
-	ssh := map[string]sshInfo{}
-	for k, v := range o.ssh {
-		ssh[k] = v
-	}
 	return outlineCapture{
-		allArgs:  allArgs,
-		usedArgs: usedArgs,
-		secrets:  secrets,
-		ssh:      ssh,
+		allArgs:  maps.Clone(o.allArgs),
+		usedArgs: maps.Clone(o.usedArgs),
+		secrets:  maps.Clone(o.secrets),
+		ssh:      maps.Clone(o.ssh),
 	}
 }
 
-func (o outlineCapture) markAllUsed(in map[string]struct{}) {
+func (o outlineCapture) markAllUsed(in map[string]struct{}, visited map[string]struct{}) {
 	for k := range in {
+		if _, ok := visited[k]; ok {
+			continue
+		}
+		visited[k] = struct{}{}
 		if a, ok := o.allArgs[k]; ok {
-			o.markAllUsed(a.deps)
+			o.markAllUsed(a.deps, visited)
 		}
 		o.usedArgs[k] = struct{}{}
 	}
 }
 
 func (ds *dispatchState) args(visited map[string]struct{}) []outline.Arg {
-	ds.outline.markAllUsed(ds.outline.usedArgs)
+	ds.outline.markAllUsed(ds.outline.usedArgs, map[string]struct{}{})
 
 	args := make([]outline.Arg, 0, len(ds.outline.usedArgs))
 	for k := range ds.outline.usedArgs {
@@ -181,11 +170,11 @@ func toSourceLocation(r []parser.Range) *pb.Location {
 	arr := make([]*pb.Range, len(r))
 	for i, r := range r {
 		arr[i] = &pb.Range{
-			Start: pb.Position{
+			Start: &pb.Position{
 				Line:      int32(r.Start.Line),
 				Character: int32(r.Start.Character),
 			},
-			End: pb.Position{
+			End: &pb.Position{
 				Line:      int32(r.End.Line),
 				Character: int32(r.End.Character),
 			},

@@ -33,6 +33,18 @@ func (cm *combinedCacheManager) ID() string {
 	return cm.id
 }
 
+func (cm *combinedCacheManager) ReleaseUnreferenced(ctx context.Context) error {
+	eg, ctx := errgroup.WithContext(ctx)
+	for _, c := range cm.cms {
+		func(c CacheManager) {
+			eg.Go(func() error {
+				return c.ReleaseUnreferenced(ctx)
+			})
+		}(c)
+	}
+	return eg.Wait()
+}
+
 func (cm *combinedCacheManager) Query(inp []CacheKeyWithSelector, inputIndex Index, dgst digest.Digest, outputIndex Index) ([]*CacheKey, error) {
 	eg, _ := errgroup.WithContext(context.TODO())
 	keys := make(map[string]*CacheKey, len(cm.cms))
@@ -73,11 +85,12 @@ func (cm *combinedCacheManager) Load(ctx context.Context, rec *CacheRecord) (res
 		return nil, err
 	}
 	defer func() {
+		ctx := context.WithoutCancel(ctx)
 		for i, res := range results {
 			if err == nil && i == 0 {
 				continue
 			}
-			res.Result.Release(context.TODO())
+			res.Result.Release(ctx)
 		}
 	}()
 	if rec.cacheManager != cm.main && cm.main != nil {
@@ -118,7 +131,6 @@ func (cm *combinedCacheManager) Records(ctx context.Context, ck *CacheKey) ([]*C
 
 	eg, _ := errgroup.WithContext(context.TODO())
 	for _, c := range cms {
-		c := c
 		eg.Go(func() error {
 			recs, err := c.Records(ctx, ck)
 			if err != nil {

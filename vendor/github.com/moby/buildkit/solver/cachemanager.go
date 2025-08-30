@@ -42,8 +42,13 @@ type cacheManager struct {
 }
 
 func (c *cacheManager) ReleaseUnreferenced(ctx context.Context) error {
+	visited := map[string]struct{}{}
 	return c.backend.Walk(func(id string) error {
 		return c.backend.WalkResults(id, func(cr CacheResult) error {
+			if _, ok := visited[cr.ID]; ok {
+				return nil
+			}
+			visited[cr.ID] = struct{}{}
 			if !c.results.Exists(ctx, cr.ID) {
 				c.backend.Release(cr.ID)
 			}
@@ -298,7 +303,7 @@ func (c *cacheManager) LoadWithParents(ctx context.Context, rec *CacheRecord) (r
 	return results, nil
 }
 
-func (c *cacheManager) Save(k *CacheKey, r Result, createdAt time.Time) (rck *ExportableCacheKey, rerr error) {
+func (c *cacheManager) Save(k *CacheKey, r Result, createdAt time.Time) (rck *ExportableCacheKey, err error) {
 	lg := bklog.G(context.TODO()).WithFields(logrus.Fields{
 		"cache_manager": c.id,
 		"op":            "save",
@@ -306,7 +311,12 @@ func (c *cacheManager) Save(k *CacheKey, r Result, createdAt time.Time) (rck *Ex
 		"stack":         bklog.TraceLevelOnlyStack(),
 	})
 	defer func() {
-		lg.WithError(rerr).WithField("return_cachekey", rck.TraceFields()).Trace("cache manager")
+		if err != nil {
+			lg = lg.WithError(err)
+		} else {
+			lg = lg.WithField("return_cachekey", rck.TraceFields())
+		}
+		lg.Trace("cache manager")
 	}()
 
 	c.mu.Lock()
@@ -378,7 +388,7 @@ func (c *cacheManager) ensurePersistentKey(k *CacheKey) error {
 		for _, ck := range deps {
 			l := CacheInfoLink{
 				Input:    Index(i),
-				Output:   Index(k.Output()),
+				Output:   k.Output(),
 				Digest:   k.Digest(),
 				Selector: ck.Selector,
 			}
@@ -405,7 +415,7 @@ func (c *cacheManager) getIDFromDeps(k *CacheKey) string {
 				m2 := make(map[string]struct{})
 				if err := c.backend.WalkLinks(c.getID(ck.CacheKey.CacheKey), CacheInfoLink{
 					Input:    Index(i),
-					Output:   Index(k.Output()),
+					Output:   k.Output(),
 					Digest:   k.Digest(),
 					Selector: ck.Selector,
 				}, func(id string) error {
@@ -439,7 +449,7 @@ func (c *cacheManager) getIDFromDeps(k *CacheKey) string {
 
 func rootKey(dgst digest.Digest, output Index) digest.Digest {
 	if strings.HasPrefix(dgst.String(), "random:") {
-		return digest.Digest("random:" + digest.FromBytes([]byte(fmt.Sprintf("%s@%d", dgst, output))).Encoded())
+		return digest.Digest("random:" + digest.FromBytes(fmt.Appendf(nil, "%s@%d", dgst, output)).Encoded())
 	}
-	return digest.FromBytes([]byte(fmt.Sprintf("%s@%d", dgst, output)))
+	return digest.FromBytes(fmt.Appendf(nil, "%s@%d", dgst, output))
 }

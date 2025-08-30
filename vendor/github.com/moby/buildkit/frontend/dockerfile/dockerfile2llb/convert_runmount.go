@@ -9,6 +9,7 @@ import (
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/moby/buildkit/solver/pb"
+	"github.com/moby/buildkit/util/system"
 	"github.com/pkg/errors"
 )
 
@@ -57,7 +58,7 @@ func setCacheUIDGID(m *instructions.Mount, st llb.State) llb.State {
 	if m.Mode != nil {
 		mode = os.FileMode(*m.Mode)
 	}
-	return st.File(llb.Mkdir("/cache", mode, llb.WithUIDGID(uid, gid)), llb.WithCustomName("[internal] settings cache mount permissions"))
+	return st.File(llb.Mkdir("/cache", mode, llb.WithUIDGID(uid, gid)), llb.WithCustomName("[internal] setting cache mount permissions"))
 }
 
 func dispatchRunMounts(d *dispatchState, c *instructions.RunCommand, sources []*dispatchState, opt dispatchOpt) ([]llb.RunOption, error) {
@@ -72,7 +73,7 @@ func dispatchRunMounts(d *dispatchState, c *instructions.RunCommand, sources []*
 		if mount.From != "" {
 			src := sources[i]
 			st = src.state
-			if !src.noinit {
+			if !src.dispatched {
 				return nil, errors.Errorf("cannot mount from stage %q to %q, stage needs to be defined before current command", mount.From, mount.Target)
 			}
 		}
@@ -118,7 +119,7 @@ func dispatchRunMounts(d *dispatchState, c *instructions.RunCommand, sources []*
 			mountOpts = append(mountOpts, llb.AsPersistentCacheDir(opt.cacheIDNamespace+"/"+mount.CacheID, sharing))
 		}
 		target := mount.Target
-		if !filepath.IsAbs(filepath.Clean(mount.Target)) {
+		if !system.IsAbsolutePath(filepath.Clean(mount.Target)) {
 			dir, err := d.state.GetDir(context.TODO())
 			if err != nil {
 				return nil, err
@@ -130,11 +131,9 @@ func dispatchRunMounts(d *dispatchState, c *instructions.RunCommand, sources []*
 		}
 		if src := path.Join("/", mount.Source); src != "/" {
 			mountOpts = append(mountOpts, llb.SourcePath(src))
-		} else {
-			if mount.UID != nil || mount.GID != nil || mount.Mode != nil {
-				st = setCacheUIDGID(mount, st)
-				mountOpts = append(mountOpts, llb.SourcePath("/cache"))
-			}
+		} else if mount.UID != nil || mount.GID != nil || mount.Mode != nil {
+			st = setCacheUIDGID(mount, st)
+			mountOpts = append(mountOpts, llb.SourcePath("/cache"))
 		}
 
 		out = append(out, llb.AddMount(target, st, mountOpts...))
