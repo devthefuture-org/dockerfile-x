@@ -27,7 +27,7 @@ RUN yarn pkg -t node18-linuxstatic-$(cat .nodearch) -o ./dist-bin/dockerfile-x -
 FROM alpine:3 AS certs
 RUN apk --update add ca-certificates
 
-FROM golang:1.21 AS build-frontend
+FROM golang:1.25 AS build-frontend
 ARG TARGETARCH
 WORKDIR /app
 COPY vendor vendor
