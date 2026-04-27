@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.6.0](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.5.3...v1.6.0) (2026-04-27)
+
+
+### Features
+
+* remote includes (HTTP / Git / OCI) with recursion guards ([9c0d1ce](https://codeberg.org/devthefuture/dockerfile-x/commit/9c0d1ce80267494bcbd03b78abfa72e006459275)), closes [#5](https://codeberg.org/devthefuture/dockerfile-x/issues/5)
+
 ### [1.5.3](https://codeberg.org/devthefuture/dockerfile-x/compare/v1.5.2...v1.5.3) (2025-08-30)
 
 
