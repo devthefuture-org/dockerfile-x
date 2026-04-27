@@ -1,55 +1,74 @@
-const path = require("path")
-
 const generateFilePathSlug = require("../utils/generateFilePathSlug")
 const asMatchRegex = require("../regex/asMatch")
 const includeFromRegex = require("../regex/includeFrom")
 const loadDockerfile = require("../core/loadDockerfile")
 const generateIncluded = require("../core/generateIncluded")
+const detectScheme = require("../sources/detectScheme")
+const resolveSource = require("../sources/resolveSource")
+
+const { SCHEMES } = detectScheme
 
 module.exports = ({
   nestingLevel = 0,
   dockerContext,
-  filePath,
+  parentSource,
   relativeFilePath,
   scope,
-  isRootFile,
+  includeChain,
+  maxIncludeDepth,
 }) =>
   async function processFrom(instruction) {
-    const fromMatch = includeFromRegex.test(instruction.args)
-    const result = []
-    if (fromMatch) {
-      const includePathParts = instruction.args.split(" AS ")[0].split("#")
-      const includePath = path.join(
-        isRootFile ? dockerContext : path.dirname(filePath),
-        includePathParts[0],
-      )
-      const includePathRelative = includePathParts[0]
-      const targetStage = includePathParts[1]
-      const relativeIncludePath = path.relative(dockerContext, includePath)
+    const argsStr = instruction.args
+    const firstToken = argsStr.split(/ AS /i)[0].trim()
+    const scheme = detectScheme(firstToken)
+    const isRemote = scheme !== SCHEMES.LOCAL
+    const isLocalInclude = !isRemote && includeFromRegex.test(firstToken)
 
-      const stageAlias = generateFilePathSlug(relativeIncludePath)
-
-      const includedContent = await loadDockerfile(includePath, {
-        scope: [...scope],
-        dockerContext,
-        parentStageTarget: targetStage,
-        parentStageAlias: stageAlias,
-        nestingLevel: nestingLevel + 1,
-      })
-
-      result.push(
-        generateIncluded({
-          includePathRelative,
-          relativeFilePath,
-          includedContent,
-          includingInstruction: "from",
-        }),
-      )
-      const asMatch = instruction.args.match(asMatchRegex)
-      const stageName = asMatch?.[1] || "final-stage"
-      result.push(`FROM ${stageAlias} AS ${stageName}`)
-    } else {
-      result.push(instruction.raw)
+    if (!isRemote && !isLocalInclude) {
+      return [instruction.raw]
     }
-    return result
+
+    // Remote refs in this version do not support `#stage` targeting; the whole
+    // pre-AS token is the ref. Local relative paths keep the legacy `#stage` syntax.
+    let includeRef
+    let targetStage = null
+    if (isRemote) {
+      includeRef = firstToken
+    } else {
+      const parts = firstToken.split("#")
+      includeRef = parts[0]
+      targetStage = parts[1]
+    }
+
+    const childSource = resolveSource(includeRef, {
+      parentSource,
+      dockerContext,
+      defaultExtension: ".dockerfile",
+    })
+
+    const stageAlias = generateFilePathSlug(
+      childSource.stageAliasBase(dockerContext),
+    )
+
+    const includedContent = await loadDockerfile(childSource, {
+      scope: [...scope],
+      dockerContext,
+      parentStageTarget: targetStage,
+      parentStageAlias: stageAlias,
+      nestingLevel: nestingLevel + 1,
+      includeChain,
+      maxIncludeDepth,
+    })
+
+    const asMatch = argsStr.match(asMatchRegex)
+    const stageName = asMatch?.[1] || "final-stage"
+    return [
+      generateIncluded({
+        includePathRelative: includeRef,
+        relativeFilePath,
+        includedContent,
+        includingInstruction: "from",
+      }),
+      `FROM ${stageAlias} AS ${stageName}`,
+    ]
   }

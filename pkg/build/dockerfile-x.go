@@ -125,7 +125,14 @@ func tryDockerfileXProcessFile(ctx context.Context, c client.Client, filename st
 			if err := json.Unmarshal(output, &result); err != nil {
 				return "", fmt.Errorf("Error parsing JSON output: %v", err)
 			}
-			if missingFile, ok := result["filename"]; ok {
+			// Only the local "missing-file" code triggers an LLB-context retry.
+			// Remote misses (HTTP 404, git/oci not-found) carry `ref` instead of
+			// `filename` and surface as a build error directly.
+			if result["error"] == "missing-file" {
+				missingFile, ok := result["filename"]
+				if !ok {
+					return "", fmt.Errorf("missing-file error did not include filename: %s", string(output))
+				}
 				if missingFile == lastMissingFile {
 					return "", fmt.Errorf("Same missing file encountered twice consecutively: %s", missingFile)
 				}
@@ -147,6 +154,9 @@ func tryDockerfileXProcessFile(ctx context.Context, c client.Client, filename st
 					return "", fmt.Errorf("Error writing to file '%s': %s\n", missingFile, err)
 				}
 				continue
+			}
+			if errCode, ok := result["error"]; ok {
+				return "", fmt.Errorf("dockerfile-x error %q: %s", errCode, string(output))
 			}
 			return "", fmt.Errorf("Command failed with exit code 2, but missing file not found. Output: %s %s", string(output), stderr.String())
 		default:

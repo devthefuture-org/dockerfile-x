@@ -1,8 +1,7 @@
-const path = require("path")
-const fs = require("fs/promises")
-
 const parseDockerfile = require("../lib/parseDockerfile")
-const checkFileExists = require("../utils/checkFileExists")
+const IncludeCycleError = require("../errors/IncludeCycleError")
+const IncludeDepthExceededError = require("../errors/IncludeDepthExceededError")
+const { DEFAULT_MAX_INCLUDE_DEPTH } = require("./limits")
 
 const postProcessDockerfile = require("./postProcessDockerfile")
 
@@ -10,54 +9,68 @@ module.exports = loadDockerfile // placed here to fix circular dependencies
 
 const instructionFactory = require("../instruction") // placed here to fix circular dependencies
 
-const defaultExtension = ".dockerfile"
-
-async function loadDockerfile(filePath, fileContext = {}) {
+// `isRootInclude` is set by the INCLUDE handler when an INCLUDE appears at
+// nesting level 0; FROM/COPY-from handlers deliberately do NOT set it. The
+// flag is consumed by postProcessDockerfile to decide:
+//   - whether to scope stage names per-file (off for the inlined INCLUDE body
+//     so an INCLUDE inlines verbatim, on for FROM-included content so its
+//     stages live in their own namespace), and
+//   - whether to emit a trailing alias on the last FROM (off for INCLUDEd
+//     content because the parent's FROM rewrite owns the alias).
+// The asymmetry is what makes INCLUDE inline-paste while FROM/COPY-from
+// pull a *referenced* stage.
+async function loadDockerfile(source, fileContext = {}) {
   const {
     parentStageTarget = null,
     parentStageAlias = null,
     nestingLevel = 0,
     dockerContext,
     scope = [],
+    includeChain = [],
+    maxIncludeDepth = DEFAULT_MAX_INCLUDE_DEPTH,
     isRootInclude,
   } = fileContext
 
-  const relativeFilePath = path.relative(dockerContext, filePath)
-  scope.push(relativeFilePath)
-
-  if (!(await checkFileExists(filePath))) {
-    let fileIsMissing = true
-    if (path.extname(filePath) !== defaultExtension) {
-      const filePathWithExt = `${filePath}${defaultExtension}`
-      if (await checkFileExists(filePathWithExt)) {
-        filePath = filePathWithExt
-        fileIsMissing = false
-      }
-    }
-    if (fileIsMissing) {
-      process.stdout.write(
-        JSON.stringify({
-          error: "missing-file",
-          filename: relativeFilePath,
-        }),
-      )
-      process.exit(2)
-    }
+  if (nestingLevel > maxIncludeDepth) {
+    throw new IncludeDepthExceededError(
+      nestingLevel,
+      maxIncludeDepth,
+      includeChain,
+    )
   }
 
+  // Resolve remote identity (oid/digest) eagerly so the cycle key reflects
+  // the resolved commit/digest even for top-level references — a moving
+  // `main` or `:latest` tag still pins to a stable id for cycle detection.
+  await source.resolve()
+
+  const sourceKey = source.key()
+  if (includeChain.includes(sourceKey)) {
+    throw new IncludeCycleError(sourceKey, includeChain)
+  }
+
+  const content = await source.read()
+
+  const relativeFilePath = source.displayPath(dockerContext)
+  scope.push(relativeFilePath)
+  const nextIncludeChain = [...includeChain, sourceKey]
+
   const isRootFile = nestingLevel === 0
+  const filePath = source.fsPath()
 
   const processingContext = {
     ...fileContext,
     scope,
+    includeChain: nextIncludeChain,
+    parentSource: source,
     filePath,
     relativeFilePath,
     isRootFile,
+    maxIncludeDepth,
   }
 
   const instructionProcessors = instructionFactory(processingContext)
 
-  const content = await fs.readFile(filePath, "utf-8")
   const instructions = parseDockerfile(content, {
     removeSyntaxComments: !isRootFile,
   })

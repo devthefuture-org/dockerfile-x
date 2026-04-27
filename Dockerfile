@@ -52,13 +52,7 @@ RUN yarn build:ncc && \
       -o ./dist-bin/dockerfile-x --compress=GZip ./dist/index.js
 
 ############################################################
-# 4) CA certificates for final scratch
-############################################################
-FROM alpine:3 AS certs
-RUN apk --no-cache add ca-certificates
-
-############################################################
-# 5) Build Go frontend (static binary)
+# 4) Build Go frontend (static binary)
 ############################################################
 FROM golang:1.25 AS build-frontend
 ARG TARGETARCH
@@ -78,27 +72,67 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH \
     -o dist-bin/dockerfile-x-frontend .
 
 ############################################################
-# 6) Minimal final image
+# 5) Fetch oras (static binary, used to pull OCI artifacts)
 ############################################################
-FROM scratch
+FROM alpine:3 AS oras-bin
+ARG TARGETARCH
+ARG ORAS_VERSION=1.2.3
+RUN apk add --no-cache curl tar \
+ && case "$TARGETARCH" in \
+      amd64) ORAS_ARCH=amd64 ;; \
+      arm64) ORAS_ARCH=arm64 ;; \
+      *)     echo "unsupported arch $TARGETARCH" && exit 1 ;; \
+    esac \
+ && curl -fsSL "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_${ORAS_ARCH}.tar.gz" \
+    | tar -xz -C /usr/local/bin oras \
+ && chmod +x /usr/local/bin/oras
 
-# BuildKit frontend capabilities (mirrors upstream Dockerfile frontend)
-# Ref: https://github.com/moby/buildkit/blob/master/frontend/dockerfile/cmd/dockerfile-frontend/Dockerfile
-LABEL moby.buildkit.frontend.network.none="true"
+############################################################
+# 6) Final image — alpine + git + oras + credential helpers
+############################################################
+FROM alpine:3
+
+# BuildKit frontend capabilities (mirrors upstream Dockerfile frontend).
+# The `network.none` capability is intentionally NOT declared: the frontend
+# fetches HTTP/Git/OCI sources at compile time and needs network access.
 LABEL moby.buildkit.frontend.caps="moby.buildkit.frontend.inputs,moby.buildkit.frontend.subrequests,moby.buildkit.frontend.contexts"
 
-# Keep PATH minimal; put binaries at root so ENTRYPOINT can reference them directly
-ENV PATH=/ \
-    DOCKERFILEX_TMPDIR=/workspace
+# Runtime deps:
+#   - ca-certificates: TLS root store for axios (HTTP includes) and oras
+#   - git: sparse fetch for git+ includes
+#   - bash: convenience for credential-helper scripts
+# Cloud credential helpers are added as static binaries.
+# Other helpers (gcr, acr, etc.) can be installed in a derived image.
+# curl is installed in a virtual package and removed after use — it's only
+# needed at build time to fetch the ECR helper, not at runtime.
+ARG TARGETARCH
+ARG AWS_ECR_LOGIN_VERSION=0.9.1
+RUN apk add --no-cache \
+        ca-certificates \
+        git \
+        bash \
+ && apk add --no-cache --virtual .build-deps curl \
+ && case "$TARGETARCH" in \
+      amd64) ECR_ARCH=linux-amd64 ;; \
+      arm64) ECR_ARCH=linux-arm64 ;; \
+      *)     ECR_ARCH="" ;; \
+    esac \
+ && if [ -n "$ECR_ARCH" ]; then \
+      curl -fsSL "https://amazon-ecr-credential-helper-releases.s3.us-east-2.amazonaws.com/${AWS_ECR_LOGIN_VERSION}/${ECR_ARCH}/docker-credential-ecr-login" \
+        -o /usr/local/bin/docker-credential-ecr-login \
+      && chmod +x /usr/local/bin/docker-credential-ecr-login; \
+    fi \
+ && apk del .build-deps
 
-# Run as non-root and default to a writeable working directory
+# Add a writeable workspace and run as non-root
+RUN adduser -D -u 1000 dockerfile-x && mkdir -p /workspace && chown 1000:1000 /workspace
+ENV DOCKERFILEX_TMPDIR=/workspace
 USER 1000
 WORKDIR /workspace
 
-# Copy only the necessary runtime artifacts
-COPY --link --from=certs          /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --link --from=build-frontend /app/dist-bin/ /
-COPY --link --from=build-cli      /app/dist-bin/ /
+# Runtime artifacts
+COPY --link --from=oras-bin       /usr/local/bin/oras /usr/local/bin/oras
+COPY --link --from=build-frontend /app/dist-bin/ /usr/local/bin/
+COPY --link --from=build-cli      /app/dist-bin/ /usr/local/bin/
 
-# The Go frontend is the entrypoint; the CLI binary is also available in PATH
-ENTRYPOINT ["/dockerfile-x-frontend"]
+ENTRYPOINT ["/usr/local/bin/dockerfile-x-frontend"]

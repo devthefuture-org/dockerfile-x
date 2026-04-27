@@ -64,7 +64,7 @@ module.exports = function postProcessDockerfile(
 
   if (stageTarget && !stageTargetFound) {
     throw new Error(
-      `Specified stage target "${stageTarget}" not found in "${filePath}"`,
+      `Specified stage target "${stageTarget}" not found in "${filePath || relativeFilePath}"`,
     )
   }
 

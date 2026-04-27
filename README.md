@@ -46,6 +46,8 @@ However, if you're working with Docker versions as old as 18.09, you can still e
 - [COPY --from](#copy-from):
   - [COPY/ADD from Another Dockerfile](#copy-add-from-another-dockerfile): Transfer files from another Dockerfile.
   - [COPY/ADD with Stages](#copy-add-with-stages): Specify a stage when copying files from another Dockerfile.
+- [Remote sources](#remote-sources): pull included Dockerfiles from HTTP(S), Git, or OCI registries.
+- [Recursion guard](#recursion-guard): default depth limit and cycle detection across local and remote includes.
 
 ## Behavior
 
@@ -239,6 +241,123 @@ Or specify a stage from which to copy or add:
 COPY --from=/path/to/another/dockerfile#stage-name source-path destination-path
 ```
 
+## Remote sources
+
+Any reference (in `INCLUDE`, `INCLUDE_ARGS|ENVS|LABELS`, `FROM`, `COPY --from=`, `ADD --from=`) can target a remote location. Three schemes are supported:
+
+### HTTP(S)
+
+```Dockerfile
+INCLUDE https://example.com/snippets/setup.dockerfile
+FROM https://example.com/base/alpine.dockerfile AS base
+```
+
+The fetcher caches responses in `~/.dockerfile-x/cache` using `ETag` / `Last-Modified` and falls back to the cached copy on network errors. Override the cache directory with `DOCKERFILEX_CACHE_DIR`.
+
+### Git (sparse fetch — no full clone)
+
+```Dockerfile
+INCLUDE git+https://github.com/foo/bar.git#main:dockerfiles/base.dockerfile
+FROM git+ssh://git@github.com/foo/bar.git#v1.2.3:base.dockerfile AS base
+```
+
+Format: `git+<git-url>#<ref>:<path>`. `<ref>` is a branch, tag, or full commit SHA (40-hex SHA-1 or 64-hex SHA-256):
+
+- **Branch / tag**: `git clone --depth 1 --filter=blob:none --no-checkout --single-branch --branch <ref>`. The fetcher then resolves the moving ref's current `oid` via `git ls-remote` and uses *that* as the cycle-detection key — so a moving `main` still cycle-checks deterministically.
+- **Commit SHA**: `git init` + `git fetch --depth 1 --filter=blob:none origin <sha>` (protocol v2). Requires the upstream server to allow fetch-by-oid. Works out of the box with **GitHub**, **GitLab** (.com and self-hosted), **Gitea** / **Forgejo**, **Bitbucket Cloud**, and `file://` bare repos. Plain `git http-backend` / older self-hosted servers may need `uploadpack.allowReachableSHA1InWant=true` (or `allowAnySHA1InWant`) on the server.
+
+> **Supply-chain pinning.** Pinning to a commit SHA (or an OCI digest, see below) is the strongest defense against a compromised or rewritten upstream: once the build resolves the artifact, an attacker who force-pushes the same branch (or republishes the same tag) cannot change what your build sees. Pin in production builds; use moving refs only for development.
+
+Both forms produce the same on-cache layout; `git sparse-checkout set <dir>` materializes only the requested file's directory. Authentication uses your standard Git mechanisms (`GIT_ASKPASS`, `~/.netrc`, credential helpers). For BuildKit usage, pass credentials via a build secret:
+
+```sh
+docker buildx build --secret id=git-credentials,src=$HOME/.git-credentials .
+```
+
+The cache directory is `~/.dockerfile-x/git-cache` (override via `DOCKERFILEX_GIT_CACHE_DIR`).
+
+### OCI artifacts
+
+```Dockerfile
+INCLUDE oci://ghcr.io/foo/bar:1.0#dockerfiles/common.dockerfile
+FROM oci://registry.example.com/base/alpine:3.19#Dockerfile AS base
+```
+
+Format: `oci://<registry>/<repo>(:<tag>|@<digest>)#<path>`.
+
+> **Supply-chain pinning.** Use the `@<algo>:<hex>` digest form (`oci://reg/repo@sha256:abc…#path`) in production builds — same rationale as a git commit SHA: an attacker who republishes the tag cannot change what your build sees, and `dockerfile-x` skips the manifest-fetch round-trip when the digest is already known. Tag form (`:<tag>`) is convenient for development; the resolved digest still becomes the cycle-detection key, but a future build pulls whatever the tag now points to.
+
+Pulled via `oras` using `~/.docker/config.json` for authentication, including credential helpers (`docker-credential-ecr-login` is bundled in the runtime image; `docker-credential-gcr`, `docker-credential-acr-env`, etc. can be added in a derived image). Resolution cascade for the auth file:
+
+1. `/run/secrets/docker-config` (BuildKit build secret)
+2. `$DOCKER_CONFIG/config.json`
+3. `$HOME/.docker/config.json`
+
+For BuildKit usage, mount your Docker config:
+
+```sh
+docker buildx build --secret id=docker-config,src=$HOME/.docker/config.json .
+```
+
+The cache directory is `~/.dockerfile-x/oci-cache` (override via `DOCKERFILEX_OCI_CACHE_DIR`). Localhost registries (`127.0.0.1`, `localhost`) are pulled with `--plain-http`; for any other host the env var `DOCKERFILEX_ORAS_PLAIN_HTTP=true` forces it.
+
+### Recursive resolution
+
+A remote-included Dockerfile may itself contain `INCLUDE`, `FROM`, or `COPY --from` directives. Relative references resolve against the parent's location:
+
+| Parent scheme | `INCLUDE ./foo.dockerfile` resolves to |
+|---|---|
+| HTTP(S) | `new URL("./foo.dockerfile", parentUrl)` |
+| Git | same `repo#ref`, sibling path |
+| OCI | same artifact, sibling path |
+| Local | sibling path on disk (existing behavior) |
+
+A nested reference may also use a different scheme — `git+https://…#main:foo.dockerfile` inside an HTTP-fetched Dockerfile is fine; resolution is delegated to `resolveSource`.
+
+## Recursion guard
+
+`dockerfile-x` enforces two safeguards across local and remote includes:
+
+- **Maximum depth** — default `32`. Exceeding it produces a JSON error on stdout and exit code `2`:
+  `{"error":"include-depth-exceeded","depth":N,"max":32,"chain":[...]}`.
+  Override with `--max-include-depth <n>` or env `DOCKERFILEX_MAX_INCLUDE_DEPTH`.
+- **Cycle detection** — if any Dockerfile re-references itself transitively, you get
+  `{"error":"include-cycle","chain":[...]}` and exit `2`. The cycle key for Git/OCI is the resolved commit `oid` / artifact `digest`, so a moving `main` or `:latest` tag still detects loops correctly.
+
+## Error codes
+
+When the CLI encounters a structured error, it writes a single-line JSON object to **stdout** and exits with code `2`. The Go BuildKit frontend distinguishes the codes below; only `missing-file` triggers an LLB-context retry — every other code surfaces directly as a build error.
+
+| Code | Trigger | Extra fields |
+|---|---|---|
+| `missing-file` | Local include path not found in the build context | `filename` |
+| `remote-file-not-found` | HTTP 404, git path missing in repo, or oci path missing in artifact | `ref` |
+| `include-cycle` | A reference re-enters its own include chain | `chain` |
+| `include-depth-exceeded` | More than `--max-include-depth` nested includes | `depth`, `max`, `chain` |
+| `path-traversal` | A `..` segment, absolute path, or symlink resolves outside its source | `ref` |
+| `remote-fetch-failed` | HTTP error other than 404, oversize body, refused redirect (HTTPS→HTTP downgrade, non-`http(s)` scheme, or cross-host redirect to a private IP not on `DOCKERFILEX_REDIRECT_ALLOWLIST`) | `url`, `originalUrl?`, `message` |
+
+## Environment variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DOCKERFILEX_MAX_INCLUDE_DEPTH` | `32` | Maximum nested include depth (also via `--max-include-depth`). |
+| `DOCKERFILEX_HTTP_TIMEOUT_MS` | `30000` | HTTP request timeout in milliseconds. |
+| `DOCKERFILEX_MAX_HTTP_BYTES` | `1048576` | Maximum HTTP response body size in bytes (1 MiB). Caps memory use against hostile servers. |
+| `DOCKERFILEX_MAX_REDIRECTS` | `5` | Maximum HTTP redirects followed. HTTPS→HTTP downgrades and non-`http(s)` schemes are always refused. |
+| `DOCKERFILEX_REDIRECT_ALLOWLIST` | unset | Comma-separated list permitting cross-host redirects to private IPs (loopback, RFC1918, link-local, ULA — denied by default to mitigate SSRF). Entries can be exact IPs (`192.168.1.10`), IPv4 CIDRs (`10.0.0.0/8`), exact hostnames (`internal.corp.local`), or suffix wildcards (`*.corp.local`). |
+| `DOCKERFILEX_SUBPROCESS_TIMEOUT_MS` | `300000` | Timeout for `git` / `oras` invocations (5 min). |
+| `DOCKERFILEX_CACHE_DIR` | `~/.dockerfile-x/cache` | HTTP response cache. |
+| `DOCKERFILEX_GIT_CACHE_DIR` | `~/.dockerfile-x/git-cache` | Git sparse-clone cache. |
+| `DOCKERFILEX_OCI_CACHE_DIR` | `~/.dockerfile-x/oci-cache` | OCI artifact cache. |
+| `DOCKERFILEX_ORAS_PLAIN_HTTP` | unset | Set to `true` to force plaintext HTTP for non-localhost OCI registries. **Use with care — disables TLS for all registry traffic.** |
+| `DOCKERFILEX_ORAS_BIN` | `oras` | Path to the `oras` binary. |
+| `DOCKERFILEX_TMPDIR` | `os.tmpdir()` | Directory for the stdin temp file when reading from `-`. |
+
+## Network access
+
+The runtime image ships with network access enabled (the upstream BuildKit `network.none` capability is dropped) so that the frontend can fetch HTTP/Git/OCI sources. A malicious Dockerfile could exfiltrate data via the references it declares — audit Dockerfiles you do not trust before building.
+
 ## Addressing Dockerfile Evolution Concerns
 
 Understanding concerns regarding feature availability with alternative frontends:
@@ -305,7 +424,6 @@ journalctl -u docker.service -f
 ## TODO NEXT
 
 ### features:
-- remote url feature with recursive remote resolution
 - allow customization hook/plugins autoloading .dockerfile-x.js or .dockerfile-x/index.js (eg: integration of yarn workspaces topographically)
 
 ### ci .gitea (for codeberg):
